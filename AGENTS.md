@@ -11,39 +11,47 @@ Agent instructions for this repository.
 ## Project At A Glance
 
 - Domain: spacecraft pursuit-evasion dynamics in LVLH coordinates.
-- Core dynamics modules are in [dynamics/](dynamics/).
-- Controllers are in [control/](control/).
+- Core dynamics modules are in [aerospace/dynamics/](aerospace/dynamics/).
+- Controllers are in [aerospace/control/](aerospace/control/).
 - Authoritative architecture notes are in [CLAUDE.md](CLAUDE.md).
 
 ## Run Commands
 
 - Use Python 3.12+ (see [pyproject.toml](pyproject.toml)).
-- Run entry point:
+- Run main entry points:
   - `python main.py`
   - `python3.12 main.py`
+  - `python main_nerm_sdre.py`
 
 ## High-Value File Map
 
 - Dynamics models:
-  - [dynamics/cw.py](dynamics/cw.py): CW linear near-circular model (6D relative state).
-  - [dynamics/lerm.py](dynamics/lerm.py): linearized elliptical relative motion (6D, time-varying).
-  - [dynamics/nerm.py](dynamics/nerm.py): nonlinear elliptical model (13D closed-loop state with true anomaly).
-  - [dynamics/nerm_2d.py](dynamics/nerm_2d.py): 2D in-plane simplification (9D closed-loop state).
+  - [aerospace/dynamics/cw.py](aerospace/dynamics/cw.py): CW linear near-circular model (6D relative state).
+  - [aerospace/dynamics/lerm.py](aerospace/dynamics/lerm.py): linearized elliptical relative motion (6D, time-varying).
+  - [aerospace/dynamics/nerm.py](aerospace/dynamics/nerm.py): nonlinear elliptical model (13D closed-loop state with true anomaly).
+  - [aerospace/dynamics/nerm_2d.py](aerospace/dynamics/nerm_2d.py): 2D in-plane simplification (9D closed-loop state).
 - Control methods:
-  - [control/lqdg.py](control/lqdg.py)
-  - [control/sdre.py](control/sdre.py)
-  - [control/sdre_2d.py](control/sdre_2d.py)
-  - [control/neural.py](control/neural.py)
-  - [control/neural_2d.py](control/neural_2d.py)
+  - [aerospace/control/lqdg.py](aerospace/control/lqdg.py)
+  - [aerospace/control/sdre.py](aerospace/control/sdre.py)
+  - [aerospace/control/sdre_2d.py](aerospace/control/sdre_2d.py)
+  - [aerospace/control/neural.py](aerospace/control/neural.py)
+  - [aerospace/control/neural_2d.py](aerospace/control/neural_2d.py)
+- Reusable simulation engines:
+  - [aerospace/simulation/nerm_ekf_sdre.py](aerospace/simulation/nerm_ekf_sdre.py)
+  - [aerospace/simulation/nerm_sdre.py](aerospace/simulation/nerm_sdre.py)
+- Experiment and training entry examples:
+  - [aerospace/experiments/control_comparison_3d.py](aerospace/experiments/control_comparison_3d.py)
+  - [aerospace/experiments/train_pinn_lc1.py](aerospace/experiments/train_pinn_lc1.py)
+  - [aerospace/pinn/pinn_trainer.py](aerospace/pinn/pinn_trainer.py)
 
 ## Known Pitfalls (Check Before Debugging)
 
 - Import path mismatch is documented in [CLAUDE.md](CLAUDE.md):
-  - [dynamics/lerm.py](dynamics/lerm.py)
-  - [control/neural.py](control/neural.py)
-  - [control/neural_2d.py](control/neural_2d.py)
+  - [aerospace/dynamics/lerm.py](aerospace/dynamics/lerm.py)
+  - [aerospace/control/neural.py](aerospace/control/neural.py)
+  - [aerospace/control/neural_2d.py](aerospace/control/neural_2d.py)
 - [README.md](README.md) is currently empty; prefer [CLAUDE.md](CLAUDE.md) for technical context.
-- [main.py](main.py) is a placeholder entry script.
+- [main.py](main.py) is an active entry script and imports the simulation engine from [aerospace/simulation/nerm_ekf_sdre.py](aerospace/simulation/nerm_ekf_sdre.py).
 
 ## Coding Conventions In This Repo
 
@@ -58,7 +66,7 @@ Agent instructions for this repository.
 ## When Making Changes
 
 - If updating equations or state definitions, verify consistency across:
-  - corresponding dynamics file in [dynamics/](dynamics/)
-  - related controller file in [control/](control/)
+  - corresponding dynamics file in [aerospace/dynamics/](aerospace/dynamics/)
+  - related controller file in [aerospace/control/](aerospace/control/)
   - architecture notes in [CLAUDE.md](CLAUDE.md)
 - Prefer adding short runnable examples/tests when behavior changes materially.

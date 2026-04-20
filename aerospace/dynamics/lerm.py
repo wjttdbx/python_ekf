@@ -23,7 +23,7 @@
 
 import numpy as np
 
-from dynamics.nerm import OrbitalDynamics
+from aerospace.dynamics.nerm import OrbitalDynamics
 
 
 class LERMDynamics:

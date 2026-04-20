@@ -6,9 +6,6 @@ SDRE 航天器追逃博弈动力学模型
 追踪星（Pursuer）和逃逸星（Evader）的运动均在参考轨道的 LVLH 坐标系下描述。
 """
 
-from __future__ import annotations
-
-import math
 import numpy as np
 
 class OrbitalDynamics:
@@ -30,7 +27,7 @@ class OrbitalDynamics:
         self.e_c = e_c
         
         # 预先计算轨道周期
-        self.T_orbit = 2 * np.pi * math.sqrt(a_c**3 / mu)
+        self.T_orbit = 2 * np.pi * np.sqrt(a_c**3 / mu)
 
     def get_orbital_params(self, nu: float) -> tuple[float, float, float]:
         """计算参考轨道在给定真近点角下的参数。

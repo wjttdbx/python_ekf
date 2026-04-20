@@ -4,8 +4,6 @@ SDRE 零和微分博弈控制器
 在每个时间步解算代数黎卡提方程（ARE），计算追踪星和逃逸星的最优控制律。
 """
 
-from __future__ import annotations
-
 import time
 import numpy as np
 from scipy.linalg import solve_continuous_are, LinAlgError
