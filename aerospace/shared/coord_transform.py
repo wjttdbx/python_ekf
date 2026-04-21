@@ -156,3 +156,84 @@ def plot_eci_trajectory(
     if save_path:
         fig.savefig(save_path, dpi=150)
     plt.show()
+
+
+# ─────────────────────────── ECI → LVLH 转换 ───────────────────────────
+
+def eci_to_lvlh_state(r_eci: np.ndarray, v_eci: np.ndarray,
+                      r_chief_eci: np.ndarray, v_chief_eci: np.ndarray) -> np.ndarray:
+    """将 ECI 绝对状态转换为 LVLH 相对状态。
+
+    Parameters
+    ----------
+    r_eci       : (3,) 目标星 ECI 位置 (km)
+    v_eci       : (3,) 目标星 ECI 速度 (km/s)
+    r_chief_eci : (3,) 参考星 ECI 位置 (km)
+    v_chief_eci : (3,) 参考星 ECI 速度 (km/s)
+
+    Returns
+    -------
+    (6,) LVLH 相对状态 [x, y, z, vx, vy, vz]
+    """
+    # LVLH 基向量
+    r_hat = r_chief_eci / np.linalg.norm(r_chief_eci)
+    h_vec = np.cross(r_chief_eci, v_chief_eci)
+    h_hat = h_vec / np.linalg.norm(h_vec)
+    y_hat = np.cross(h_hat, r_hat)
+
+    # 旋转矩阵 ECI → LVLH（行向量为基向量）
+    R = np.array([r_hat, y_hat, h_hat])
+
+    # 相对位置
+    dr = r_eci - r_chief_eci
+    pos_lvlh = R @ dr
+
+    # 角速度 omega = h / |r|^2
+    omega = h_vec / np.linalg.norm(r_chief_eci)**2
+
+    # 相对速度（去除参考系旋转）
+    dv = v_eci - v_chief_eci
+    vel_lvlh = R @ dv - np.cross(omega, pos_lvlh)
+
+    return np.concatenate([pos_lvlh, vel_lvlh])
+
+
+def keplerian_to_eci(a: float, e: float, i: float,
+                     Omega: float, omega: float, nu: float,
+                     mu: float = 3.986e5) -> tuple[np.ndarray, np.ndarray]:
+    """从开普勒轨道根数计算 ECI 位置和速度。
+
+    Parameters
+    ----------
+    a     : 半长轴 (km)
+    e     : 偏心率
+    i     : 倾角 (rad)
+    Omega : 升交点赤经 (rad)
+    omega : 近地点幅角 (rad)
+    nu    : 真近点角 (rad)
+    mu    : 引力常数 (km^3/s^2)
+
+    Returns
+    -------
+    r_eci : (3,) ECI 位置 (km)
+    v_eci : (3,) ECI 速度 (km/s)
+    """
+    p = a * (1 - e**2)
+    r = p / (1 + e * np.cos(nu))
+
+    # 轨道面内位置和速度
+    r_orb = np.array([r * np.cos(nu), r * np.sin(nu), 0.0])
+    v_orb = np.sqrt(mu / p) * np.array([-np.sin(nu), e + np.cos(nu), 0.0])
+
+    # 旋转矩阵：轨道面 → ECI（3-1-3 欧拉角：Omega, i, omega）
+    cO, sO = np.cos(Omega), np.sin(Omega)
+    ci, si = np.cos(i),     np.sin(i)
+    co, so = np.cos(omega), np.sin(omega)
+
+    R = np.array([
+        [cO*co - sO*so*ci,  -cO*so - sO*co*ci,  sO*si],
+        [sO*co + cO*so*ci,  -sO*so + cO*co*ci, -cO*si],
+        [so*si,              co*si,              ci   ],
+    ])
+
+    return R @ r_orb, R @ v_orb

@@ -66,46 +66,41 @@ class RelativeStateEKF:
     # ── 核心滤波步骤 ──────────────────────────────────────────────────────────
 
     def predict(self, A: np.ndarray, B: np.ndarray,
-                u_p: np.ndarray, u_e: np.ndarray, dt: float) -> None:
-        """EKF 预测步（线性化传播）。
-
-        Parameters
-        ----------
-        A   : (6, 6) ndarray  SDC 状态矩阵（线性化矩阵）
-        B   : (6, 3) ndarray  控制输入矩阵
-        u_p : (3,) ndarray    追踪星推力加速度
-        u_e : (3,) ndarray    逃逸星推力加速度
-        dt  : float           时间步长 (s)
-        """
-        self.x = self.x + dt * (A @ self.x + B @ (u_p - u_e))
-        self.P = A @ self.P @ A.T + self.Q
-
-    def update(self, z_meas: np.ndarray) -> np.ndarray:
-        """EKF 更新步（非线性测量方程线性化）。
-
-        Parameters
-        ----------
-        z_meas : (3,) ndarray  实际测量值 [ρ, az, el]
+                u_p: np.ndarray, u_e: np.ndarray, dt: float) -> tuple:
+        """EKF 预测步，离散化传播（对齐 C++ F*X / F*P*F^T+Q 结构）。
 
         Returns
         -------
-        y_innov : (3,) ndarray  新息向量
+        x_priori : (6,) ndarray
+        P_priori : (6, 6) ndarray
         """
-        x_rel = self.x
-        rho_p = np.linalg.norm(x_rel[:3]) + 1e-12
-        az_p = np.arctan2(x_rel[1], x_rel[0])
-        el_p = np.arcsin(np.clip(x_rel[2] / rho_p, -1, 1))
+        F = np.eye(6) + A * dt                          # 一阶离散化转移矩阵
+        x_priori = F @ self.x + dt * B @ (u_p - u_e)
+        P_priori = F @ self.P @ F.T + self.Q
+        return x_priori, P_priori
+
+    def update(self, x_priori: np.ndarray, P_priori: np.ndarray,
+               z_meas: np.ndarray) -> np.ndarray:
+        """EKF 更新步，在预测状态处线性化（对齐 C++ H(X_priori) 结构）。
+
+        Returns
+        -------
+        y_innov : (3,) ndarray
+        """
+        rho_p = np.linalg.norm(x_priori[:3]) + 1e-12
+        az_p  = np.arctan2(x_priori[1], x_priori[0])
+        el_p  = np.arcsin(np.clip(x_priori[2] / rho_p, -1, 1))
         z_pred = np.array([rho_p, az_p, el_p])
 
         y_innov = z_meas - z_pred
         y_innov[1:3] = self.wrap_angle(y_innov[1:3])
 
-        H = self.meas_jacobian(x_rel)
-        S = H @ self.P @ H.T + self.R
-        K = self.P @ H.T @ np.linalg.inv(S)
+        H = self.meas_jacobian(x_priori)
+        S = H @ P_priori @ H.T + self.R
+        K = P_priori @ H.T @ np.linalg.inv(S)
 
-        self.x = self.x + K @ y_innov
-        self.P = (np.eye(6) - K @ H) @ self.P
+        self.x = x_priori + K @ y_innov
+        self.P = (np.eye(6) - K @ H) @ P_priori
         return y_innov
 
     def step(self, A: np.ndarray, B: np.ndarray,
@@ -115,7 +110,7 @@ class RelativeStateEKF:
 
         Returns
         -------
-        y_innov : (3,) ndarray  新息向量
+        y_innov : (3,) ndarray
         """
-        self.predict(A, B, u_p, u_e, dt)
-        return self.update(z_meas)
+        x_priori, P_priori = self.predict(A, B, u_p, u_e, dt)
+        return self.update(x_priori, P_priori, z_meas)

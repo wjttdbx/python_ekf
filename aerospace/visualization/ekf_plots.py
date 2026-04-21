@@ -1,133 +1,173 @@
 """
 NERM + EKF + SDRE 仿真结果可视化
 
-提供统一的绘图接口，支持单次仿真和对比仿真。
+每次仿真输出三张图：
+  <base>_rel.png   — LVLH 相对运动轨迹 + 各分量时间历程 + 相对距离
+  <base>_ctrl.png  — 推力分量 + 推力范数（追踪星 / 逃逸星）
+  <base>_ekf.png   — EKF 误差 + 3σ 包络 + 新息（仅有噪声时有意义）
 """
-
-from __future__ import annotations
 
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 
 from aerospace.dynamics.nerm import OrbitalDynamics
 from aerospace.simulation.nerm_ekf_sdre import EKFSDRESimResult
 
-
-def lvlh_to_inertial(x_lvlh: np.ndarray, nu: float, r_c: float) -> np.ndarray:
-    """将 LVLH 坐标转换到惯性系（以地心为原点）。"""
-    r_ref_inertial = np.array([r_c * np.cos(nu), r_c * np.sin(nu), 0.0])
-    cos_nu, sin_nu = np.cos(nu), np.sin(nu)
-    R = np.array([
-        [cos_nu, -sin_nu, 0],
-        [sin_nu,  cos_nu, 0],
-        [0,       0,      1]
-    ])
-    return r_ref_inertial + R @ x_lvlh
+_C = ["tab:blue", "tab:orange", "tab:green"]
+_POS = ["x", "y", "z"]
+_VEL = ["vx", "vy", "vz"]
+_CTRL = ["ux", "uy", "uz"]
 
 
-def plot_single_simulation(result: EKFSDRESimResult, orb: OrbitalDynamics,
-                           title: str, out_path: str) -> None:
-    """绘制单次仿真结果（6 子图布局）。"""
-    hist_t = result.t
-    hist_pos_p = result.states[0:3, :].T
-    hist_pos_e = result.states[6:9, :].T
-    hist_nu = result.states[12, :]
-    hist_dist = result.dist_history
-    hist_ekf_err = result.ekf_err_history
+# ── 内部工具 ──────────────────────────────────────────────────────────────────
 
-    # LVLH → 惯性系转换
-    N = len(hist_t)
-    pos_p_inertial = np.zeros_like(hist_pos_p)
-    pos_e_inertial = np.zeros_like(hist_pos_e)
-    for i in range(N):
-        r_c, _, _ = orb.get_orbital_params(hist_nu[i])
-        pos_p_inertial[i] = lvlh_to_inertial(hist_pos_p[i], hist_nu[i], r_c)
-        pos_e_inertial[i] = lvlh_to_inertial(hist_pos_e[i], hist_nu[i], r_c)
+def _sym_ylim(ax, margin: float = 0.1) -> None:
+    """y 轴以 0 为中心，范围由数据 99 百分位决定，避免初始峰值撑开坐标轴。"""
+    lines = ax.get_lines()
+    if not lines:
+        return
+    vals = np.concatenate([ln.get_ydata() for ln in lines if len(ln.get_ydata()) > 0])
+    if vals.size == 0:
+        return
+    lim = np.percentile(np.abs(vals), 99) * (1 + margin)
+    if lim > 0:
+        ax.set_ylim(-lim, lim)
 
-    # 参考轨道
-    nu_ref = np.linspace(0, 2 * np.pi, 360)
-    ref_x = np.array([orb.get_orbital_params(n)[0] * np.cos(n) for n in nu_ref])
-    ref_y = np.array([orb.get_orbital_params(n)[0] * np.sin(n) for n in nu_ref])
 
-    R_earth = 6371.0
-    fig = plt.figure(figsize=(18, 12))
-    fig.suptitle(title, fontsize=14, fontweight="bold")
+def _equal_xy_lim(axes_list) -> None:
+    """让多个子图共享相同的 x/y 范围（取所有轴的并集），用于投影图对齐。"""
+    all_xl = [ax.get_xlim() for ax in axes_list]
+    all_yl = [ax.get_ylim() for ax in axes_list]
+    xmin = min(v[0] for v in all_xl); xmax = max(v[1] for v in all_xl)
+    ymin = min(v[0] for v in all_yl); ymax = max(v[1] for v in all_yl)
+    span = max(xmax - xmin, ymax - ymin) * 0.55
+    xc = (xmin + xmax) / 2; yc = (ymin + ymax) / 2
+    for ax in axes_list:
+        ax.set_xlim(xc - span, xc + span)
+        ax.set_ylim(yc - span, yc + span)
 
-    # 1. 惯性系 3D
-    ax0 = fig.add_subplot(2, 3, 1, projection="3d")
-    u_sph = np.linspace(0, 2 * np.pi, 40)
-    v_sph = np.linspace(0, np.pi, 20)
-    xe = R_earth * np.outer(np.cos(u_sph), np.sin(v_sph))
-    ye = R_earth * np.outer(np.sin(u_sph), np.sin(v_sph))
-    ze = R_earth * np.outer(np.ones_like(u_sph), np.cos(v_sph))
-    ax0.plot_surface(xe, ye, ze, color="deepskyblue", alpha=0.35, linewidth=0)
-    ax0.plot(ref_x, ref_y, np.zeros(360), "gray", lw=0.8, ls="--", alpha=0.6, label="Ref")
-    ax0.plot(pos_p_inertial[:, 0], pos_p_inertial[:, 1], pos_p_inertial[:, 2],
-             "b-", lw=1.2, label="Pursuer")
-    ax0.plot(pos_e_inertial[:, 0], pos_e_inertial[:, 1], pos_e_inertial[:, 2],
-             "r-", lw=1.2, label="Evader")
-    ax0.scatter(*pos_p_inertial[0], c="b", s=40, marker="o")
-    ax0.scatter(*pos_e_inertial[0], c="r", s=40, marker="o")
-    ax0.scatter(*pos_p_inertial[-1], c="b", s=60, marker="*")
-    ax0.scatter(*pos_e_inertial[-1], c="r", s=60, marker="*")
-    ax0.set_xlabel("X (km)"); ax0.set_ylabel("Y (km)"); ax0.set_zlabel("Z (km)")
-    ax0.set_title("Inertial Frame 3D"); ax0.legend(fontsize=7)
 
-    # 2. LVLH 3D
-    ax1 = fig.add_subplot(2, 3, 2, projection="3d")
-    ax1.plot(hist_pos_p[:, 0], hist_pos_p[:, 1], hist_pos_p[:, 2],
-             "b-", lw=1.2, label="Pursuer")
-    ax1.plot(hist_pos_e[:, 0], hist_pos_e[:, 1], hist_pos_e[:, 2],
-             "r-", lw=1.2, label="Evader")
-    ax1.scatter(*hist_pos_p[0], c="b", s=40, marker="o")
-    ax1.scatter(*hist_pos_e[0], c="r", s=40, marker="o")
-    ax1.scatter(*hist_pos_p[-1], c="b", s=60, marker="*")
-    ax1.scatter(*hist_pos_e[-1], c="r", s=60, marker="*")
-    ax1.set_xlabel("x (km)"); ax1.set_ylabel("y (km)"); ax1.set_zlabel("z (km)")
-    ax1.set_title("3D LVLH Trajectory"); ax1.legend(fontsize=7)
+# ── 图 1：LVLH 相对运动 ───────────────────────────────────────────────────────
 
-    # 3. 相对距离
-    ax2 = fig.add_subplot(2, 3, 3)
-    ax2.plot(hist_t / 3600, hist_dist, "k-", lw=1.5)
-    ax2.set_xlabel("Time (h)"); ax2.set_ylabel("Relative distance (km)")
-    ax2.set_title("Pursuer-Evader Distance")
-    ax2.grid(True, alpha=0.4); ax2.set_yscale("log")
+def plot_relative_motion(result: EKFSDRESimResult, title: str, out_path: str) -> None:
+    """
+    3×4 布局：
+      行0: 3D轨迹(跨2列) | x-y投影 | y-z投影
+      行1: 相对距离(对数) | 位置 x   | 位置 y  | 位置 z
+      行2: 速度范数       | 速度 vx  | 速度 vy | 速度 vz
+    单位：位置 km，速度 m/s
+    """
+    t_h  = result.t / 3600
+    rel  = result.states[0:3, :] - result.states[6:9, :]          # km, (3,N)
+    relv = (result.states[3:6, :] - result.states[9:12, :]) * 1000 # m/s, (3,N)
+    rel_T = rel.T                                                   # (N,3)
 
-    # 4. 惯性系 2D
-    ax5 = fig.add_subplot(2, 3, 4)
-    theta_c = np.linspace(0, 2 * np.pi, 360)
-    ax5.fill(R_earth * np.cos(theta_c), R_earth * np.sin(theta_c),
-             color="deepskyblue", alpha=0.4, label="Earth")
-    ax5.plot(ref_x, ref_y, "gray", lw=0.8, ls="--", alpha=0.6, label="Ref")
-    ax5.plot(pos_p_inertial[:, 0], pos_p_inertial[:, 1], "b-", lw=1.2, label="Pursuer")
-    ax5.plot(pos_e_inertial[:, 0], pos_e_inertial[:, 1], "r-", lw=1.2, label="Evader")
-    ax5.scatter(pos_p_inertial[0, 0], pos_p_inertial[0, 1], c="b", s=40, marker="o")
-    ax5.scatter(pos_e_inertial[0, 0], pos_e_inertial[0, 1], c="r", s=40, marker="o")
-    ax5.scatter(pos_p_inertial[-1, 0], pos_p_inertial[-1, 1], c="b", s=60, marker="*")
-    ax5.scatter(pos_e_inertial[-1, 0], pos_e_inertial[-1, 1], c="r", s=60, marker="*")
-    ax5.set_xlabel("X (km)"); ax5.set_ylabel("Y (km)")
-    ax5.set_title("Orbital Plane (Inertial)")
-    ax5.legend(fontsize=7); ax5.grid(True, alpha=0.3); ax5.set_aspect("equal")
+    fig = plt.figure(figsize=(20, 14))
+    fig.suptitle(title, fontsize=13, fontweight="bold")
+    gs = GridSpec(3, 4, figure=fig, hspace=0.45, wspace=0.35)
 
-    # 5. EKF 误差
-    ax3 = fig.add_subplot(2, 3, 5)
-    ax3.plot(hist_t / 3600, hist_ekf_err * 1000, "g-", lw=1.2)
-    ax3.set_xlabel("Time (h)"); ax3.set_ylabel("EKF error (m)")
-    ax3.set_title("EKF Estimation Error"); ax3.grid(True, alpha=0.4)
+    # ── 3D 轨迹
+    ax3d = fig.add_subplot(gs[0, :2], projection="3d")
+    ax3d.plot(rel_T[:, 0], rel_T[:, 1], rel_T[:, 2], "b-", lw=1.2)
+    ax3d.scatter(*rel_T[0],  c="g", s=60, zorder=5, label="Start")
+    ax3d.scatter(*rel_T[-1], c="r", s=60, marker="*", zorder=5, label="End")
+    ax3d.set_xlabel("x (km)"); ax3d.set_ylabel("y (km)"); ax3d.set_zlabel("z (km)")
+    ax3d.set_title("Relative Motion 3D (LVLH)"); ax3d.legend(fontsize=8)
 
-    # 6. LVLH x-y
-    ax4 = fig.add_subplot(2, 3, 6)
-    ax4.plot(hist_pos_p[:, 0], hist_pos_p[:, 1], "b-", lw=1.2, label="Pursuer")
-    ax4.plot(hist_pos_e[:, 0], hist_pos_e[:, 1], "r-", lw=1.2, label="Evader")
-    ax4.scatter(hist_pos_p[0, 0], hist_pos_p[0, 1], c="b", s=40, marker="o")
-    ax4.scatter(hist_pos_e[0, 0], hist_pos_e[0, 1], c="r", s=40, marker="o")
-    ax4.scatter(hist_pos_p[-1, 0], hist_pos_p[-1, 1], c="b", s=60, marker="*")
-    ax4.scatter(hist_pos_e[-1, 0], hist_pos_e[-1, 1], c="r", s=60, marker="*")
-    ax4.set_xlabel("x (km)"); ax4.set_ylabel("y (km)")
-    ax4.set_title("x-y Projection (LVLH)")
-    ax4.legend(fontsize=7); ax4.grid(True, alpha=0.4); ax4.set_aspect("equal")
+    # ── x-y 投影
+    ax_xy = fig.add_subplot(gs[0, 2])
+    ax_xy.plot(rel_T[:, 0], rel_T[:, 1], "b-", lw=1.2)
+    ax_xy.scatter(*rel_T[0, :2],  c="g", s=40)
+    ax_xy.scatter(*rel_T[-1, :2], c="r", s=50, marker="*")
+    ax_xy.set_xlabel("x (km)"); ax_xy.set_ylabel("y (km)")
+    ax_xy.set_title("x-y  (radial / along-track)")
+    ax_xy.grid(True, alpha=0.4); ax_xy.set_aspect("equal")
+
+    # ── y-z 投影
+    ax_yz = fig.add_subplot(gs[0, 3])
+    ax_yz.plot(rel_T[:, 1], rel_T[:, 2], "b-", lw=1.2)
+    ax_yz.scatter(*rel_T[0, 1:],  c="g", s=40)
+    ax_yz.scatter(*rel_T[-1, 1:], c="r", s=50, marker="*")
+    ax_yz.set_xlabel("y (km)"); ax_yz.set_ylabel("z (km)")
+    ax_yz.set_title("y-z  (along-track / cross-track)")
+    ax_yz.grid(True, alpha=0.4); ax_yz.set_aspect("equal")
+
+    _equal_xy_lim([ax_xy, ax_yz])
+
+    # ── 相对距离（对数）
+    ax_d = fig.add_subplot(gs[1, 0])
+    ax_d.semilogy(t_h, result.dist_history, "k-", lw=1.5)
+    ax_d.set_xlabel("Time (h)"); ax_d.set_ylabel("km")
+    ax_d.set_title("Relative Distance"); ax_d.grid(True, alpha=0.4)
+
+    # ── 位置三分量（各自独立子图，单位 km）
+    for i in range(3):
+        ax = fig.add_subplot(gs[1, i + 1])
+        ax.plot(t_h, rel[i], color=_C[i], lw=1.1)
+        ax.axhline(0, color="k", lw=0.6, ls="--")
+        ax.set_xlabel("Time (h)"); ax.set_ylabel("km")
+        ax.set_title(f"Relative position {_POS[i]}")
+        ax.grid(True, alpha=0.4)
+
+    # ── 速度范数
+    ax_vn = fig.add_subplot(gs[2, 0])
+    ax_vn.plot(t_h, np.linalg.norm(relv, axis=0), "k-", lw=1.3)
+    ax_vn.set_xlabel("Time (h)"); ax_vn.set_ylabel("m/s")
+    ax_vn.set_title("Relative Speed ||Δv||")
+    ax_vn.grid(True, alpha=0.4)
+
+    # ── 速度三分量（各自独立子图，单位 m/s）
+    for i in range(3):
+        ax = fig.add_subplot(gs[2, i + 1])
+        ax.plot(t_h, relv[i], color=_C[i], lw=1.1)
+        ax.axhline(0, color="k", lw=0.6, ls="--")
+        ax.set_xlabel("Time (h)"); ax.set_ylabel("m/s")
+        ax.set_title(f"Relative velocity {_VEL[i]}")
+        ax.grid(True, alpha=0.4)
+
+    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"图像已保存至 {out_path}")
+
+
+# ── 图 2：控制推力 ────────────────────────────────────────────────────────────
+
+def plot_control_history(result: EKFSDRESimResult, title: str, out_path: str) -> None:
+    """
+    3×2 布局：左列追踪星，右列逃逸星。
+    行0-2: ux/uy/uz 分量（y 轴用 99 百分位裁剪）
+    最后一行额外加推力范数对比。
+    """
+    t_h = result.t / 3600
+    u_p = result.u_p_history * 1e6   # km/s²→μm/s²
+    u_e = result.u_e_history * 1e6
+    norm_p = np.linalg.norm(u_p, axis=0)
+    norm_e = np.linalg.norm(u_e, axis=0)
+
+    fig, axes = plt.subplots(4, 2, figsize=(14, 14), sharex=True)
+    fig.suptitle(title, fontsize=13, fontweight="bold")
+
+    for i in range(3):
+        for col, (u, lbl, color) in enumerate([(u_p, "Pursuer", "tab:blue"),
+                                                (u_e, "Evader",  "tab:red")]):
+            ax = axes[i, col]
+            ax.plot(t_h, u[i], color=color, lw=1.1)
+            ax.set_ylabel("μm/s²")
+            ax.set_title(f"{lbl} thrust {_CTRL[i]}")
+            ax.grid(True, alpha=0.4)
+            _sym_ylim(ax)
+
+    # 推力范数
+    axes[3, 0].plot(t_h, norm_p, "tab:blue", lw=1.3)
+    axes[3, 0].set_xlabel("Time (h)"); axes[3, 0].set_ylabel("μm/s²")
+    axes[3, 0].set_title("Pursuer ||u||"); axes[3, 0].grid(True, alpha=0.4)
+
+    axes[3, 1].plot(t_h, norm_e, "tab:red", lw=1.3)
+    axes[3, 1].set_xlabel("Time (h)"); axes[3, 1].set_ylabel("μm/s²")
+    axes[3, 1].set_title("Evader ||u||"); axes[3, 1].grid(True, alpha=0.4)
 
     plt.tight_layout()
     plt.savefig(out_path, dpi=150, bbox_inches="tight")
@@ -135,70 +175,116 @@ def plot_single_simulation(result: EKFSDRESimResult, orb: OrbitalDynamics,
     print(f"图像已保存至 {out_path}")
 
 
+# ── 图 3：EKF 性能 ────────────────────────────────────────────────────────────
+
+def plot_ekf_performance(result: EKFSDRESimResult, title: str, out_path: str) -> None:
+    """
+    3×3 布局：
+      行0: 位置误差 x/y/z + 3σ 包络（y 轴 99 百分位裁剪）
+      行1: 速度误差 vx/vy/vz + 3σ 包络
+      行2: 新息 δρ / δaz / δel
+    """
+    t_h = result.t / 3600
+    err_pos = result.ekf_err_history[0:3, :] * 1000        # km→m
+    err_vel = result.ekf_err_history[3:6, :] * 1000        # km/s→m/s
+    std_pos = np.sqrt(np.maximum(result.P_diag_history[0:3, :], 0)) * 1000
+    std_vel = np.sqrt(np.maximum(result.P_diag_history[3:6, :], 0)) * 1000
+
+    innov = result.innov_history.copy()
+    innov[0]   *= 1000    # km→m
+    innov[1:3] *= 1000    # rad→mrad
+
+    innov_labels = ["δρ", "δaz", "δel"]
+    innov_units  = ["m",  "mrad", "mrad"]
+
+    fig = plt.figure(figsize=(16, 12))
+    fig.suptitle(title, fontsize=13, fontweight="bold")
+    gs = GridSpec(3, 3, figure=fig, hspace=0.48, wspace=0.35)
+
+    t_capture = t_h[-1] if result.captured else None
+
+    for i in range(3):
+        # 位置误差
+        ax = fig.add_subplot(gs[0, i])
+        lim_p = np.percentile(np.abs(err_pos[i]), 99) * 1.3 or 1.0
+        ax.set_ylim(-lim_p, lim_p)
+        ax.fill_between(t_h, -3 * std_pos[i], 3 * std_pos[i],
+                        alpha=0.22, color=_C[i], label="3σ bound")
+        ax.plot(t_h, err_pos[i], color=_C[i], lw=0.9, label="error")
+        ax.axhline(0, color="k", lw=0.6, ls="--")
+        if t_capture:
+            ax.axvline(t_capture, color="gray", lw=0.8, ls=":", label="capture")
+        ax.set_xlabel("Time (h)"); ax.set_ylabel("m")
+        ax.set_title(f"Pos error {_POS[i]}")
+        ax.grid(True, alpha=0.4); ax.legend(fontsize=7, loc="upper right")
+
+        # 速度误差
+        ax = fig.add_subplot(gs[1, i])
+        lim_v = np.percentile(np.abs(err_vel[i]), 99) * 1.3 or 1.0
+        ax.set_ylim(-lim_v, lim_v)
+        ax.fill_between(t_h, -3 * std_vel[i], 3 * std_vel[i],
+                        alpha=0.22, color=_C[i], label="3σ bound")
+        ax.plot(t_h, err_vel[i], color=_C[i], lw=0.9, label="error")
+        ax.axhline(0, color="k", lw=0.6, ls="--")
+        if t_capture:
+            ax.axvline(t_capture, color="gray", lw=0.8, ls=":")
+        ax.set_xlabel("Time (h)"); ax.set_ylabel("m/s")
+        ax.set_title(f"Vel error {_VEL[i]}")
+        ax.grid(True, alpha=0.4); ax.legend(fontsize=7, loc="upper right")
+
+        # 新息（99 百分位裁剪）
+        ax = fig.add_subplot(gs[2, i])
+        lim_z = np.percentile(np.abs(innov[i]), 99) * 1.3 or 1.0
+        ax.set_ylim(-lim_z, lim_z)
+        ax.plot(t_h, innov[i], color=_C[i], lw=0.8, alpha=0.85)
+        ax.axhline(0, color="k", lw=0.6, ls="--")
+        if t_capture:
+            ax.axvline(t_capture, color="gray", lw=0.8, ls=":", label="capture")
+            ax.legend(fontsize=7, loc="upper right")
+        ax.set_xlabel("Time (h)"); ax.set_ylabel(innov_units[i])
+        ax.set_title(f"Innovation {innov_labels[i]}")
+        ax.grid(True, alpha=0.4)
+
+    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"图像已保存至 {out_path}")
+
+
+# ── 公共接口 ──────────────────────────────────────────────────────────────────
+
+def plot_single_simulation(result: EKFSDRESimResult, orb: OrbitalDynamics,
+                           title: str, out_path: str) -> None:
+    """生成三张图：相对运动、控制推力、EKF 性能。"""
+    base = out_path.replace(".png", "")
+    plot_relative_motion(result, title + " — Relative Motion", base + "_rel.png")
+    plot_control_history(result, title + " — Control",         base + "_ctrl.png")
+    plot_ekf_performance(result, title + " — EKF Performance", base + "_ekf.png")
+
+
 def plot_comparison(result_noisy: EKFSDRESimResult, result_clean: EKFSDRESimResult,
-                   orb: OrbitalDynamics, out_path: str) -> None:
-    """并排对比：左列有噪声，右列无噪声（3 行 × 2 列）。"""
-    # 参考轨道
-    nu_ref = np.linspace(0, 2 * np.pi, 360)
-    ref_x = np.array([orb.get_orbital_params(n)[0] * np.cos(n) for n in nu_ref])
-    ref_y = np.array([orb.get_orbital_params(n)[0] * np.sin(n) for n in nu_ref])
+                    orb: OrbitalDynamics, out_path: str) -> None:
+    """有噪声 vs 无噪声：相对距离 + 位置估计误差范数对比（2×2）。"""
+    fig, axes = plt.subplots(2, 2, figsize=(14, 9))
+    fig.suptitle("NERM+EKF+SDRE: Noisy vs. Ideal", fontsize=13, fontweight="bold")
 
-    R_earth = 6371.0
-    theta_c = np.linspace(0, 2 * np.pi, 360)
+    for col, (res, lbl) in enumerate([(result_noisy, "With Noise (EKF)"),
+                                       (result_clean, "Ideal (No Noise)")]):
+        t_h = res.t / 3600
 
-    fig, axes = plt.subplots(3, 2, figsize=(16, 18))
-    fig.suptitle("NERM+EKF+SDRE: Noisy vs. Ideal Comparison",
-                 fontsize=14, fontweight="bold")
-    titles_col = ["With Measurement Noise (EKF)", "Ideal (No Noise)"]
-
-    for col, result in enumerate([result_noisy, result_clean]):
-        hist_t = result.t
-        hist_pos_p = result.states[0:3, :].T
-        hist_pos_e = result.states[6:9, :].T
-        hist_nu = result.states[12, :]
-        hist_dist = result.dist_history
-        hist_ekf_err = result.ekf_err_history
-
-        # LVLH → 惯性系
-        N = len(hist_t)
-        pos_p_in = np.zeros_like(hist_pos_p)
-        pos_e_in = np.zeros_like(hist_pos_e)
-        for i in range(N):
-            r_c, _, _ = orb.get_orbital_params(hist_nu[i])
-            pos_p_in[i] = lvlh_to_inertial(hist_pos_p[i], hist_nu[i], r_c)
-            pos_e_in[i] = lvlh_to_inertial(hist_pos_e[i], hist_nu[i], r_c)
-
-        # 行 0: 惯性系 2D
         ax = axes[0, col]
-        ax.fill(R_earth * np.cos(theta_c), R_earth * np.sin(theta_c),
-                color="deepskyblue", alpha=0.4, label="Earth")
-        ax.plot(ref_x, ref_y, "gray", lw=0.8, ls="--", alpha=0.5, label="Ref orbit")
-        ax.plot(pos_p_in[:, 0], pos_p_in[:, 1], "b-", lw=1.2, label="Pursuer")
-        ax.plot(pos_e_in[:, 0], pos_e_in[:, 1], "r-", lw=1.2, label="Evader")
-        ax.scatter(pos_p_in[0, 0], pos_p_in[0, 1], c="b", s=40, marker="o")
-        ax.scatter(pos_e_in[0, 0], pos_e_in[0, 1], c="r", s=40, marker="o")
-        ax.scatter(pos_p_in[-1, 0], pos_p_in[-1, 1], c="b", s=60, marker="*")
-        ax.scatter(pos_e_in[-1, 0], pos_e_in[-1, 1], c="r", s=60, marker="*")
-        ax.set_xlabel("X (km)"); ax.set_ylabel("Y (km)")
-        ax.set_title(f"Orbital Plane — {titles_col[col]}")
-        ax.legend(fontsize=7); ax.grid(True, alpha=0.3); ax.set_aspect("equal")
+        ax.semilogy(t_h, res.dist_history, "k-", lw=1.5)
+        ax.set_xlabel("Time (h)"); ax.set_ylabel("km")
+        ax.set_title(f"Relative Distance — {lbl}"); ax.grid(True, alpha=0.4)
 
-        # 行 1: 相对距离
         ax = axes[1, col]
-        ax.plot(hist_t / 3600, hist_dist, "k-", lw=1.5)
-        ax.set_xlabel("Time (h)"); ax.set_ylabel("Relative distance (km)")
-        ax.set_title(f"Distance — {titles_col[col]}")
-        ax.grid(True, alpha=0.4); ax.set_yscale("log")
-
-        # 行 2: EKF 误差
-        ax = axes[2, col]
-        label = "EKF pos error" if col == 0 else "True rel pos error (≈0)"
-        ax.plot(hist_t / 3600, hist_ekf_err * 1000, "g-", lw=1.2, label=label)
-        ax.set_xlabel("Time (h)"); ax.set_ylabel("Error (m)")
-        ax.set_title(f"Estimation Error — {titles_col[col]}")
-        ax.grid(True, alpha=0.4); ax.legend(fontsize=7)
+        pos_err = np.linalg.norm(res.ekf_err_history[0:3, :], axis=0) * 1000
+        ax.plot(t_h, pos_err, color="tab:green", lw=1.0)
+        ax.set_xlabel("Time (h)"); ax.set_ylabel("m")
+        ax.set_title(f"Position Estimation Error ||Δr|| — {lbl}")
+        ax.grid(True, alpha=0.4)
 
     plt.tight_layout()
     plt.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close()
     print(f"对比图已保存至 {out_path}")
+
