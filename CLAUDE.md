@@ -20,9 +20,29 @@ uv run python main.py
 
 # Run ideal simulation (NERM + SDRE, no EKF)
 uv run python main_nerm_sdre.py
+
+# PINN training (3D)
+uv run python -m aerospace.pinn.pinn_trainer
+
+# PINN training (2D)
+uv run python -m aerospace.pinn.pinn_trainer_2d
+
+# Export PINN checkpoint to ONNX (2D default, --dim 3 for 3D)
+uv run python -m aerospace.pinn.export_onnx --dim 3
+
+# Validate PINN accuracy
+uv run python -m aerospace.pinn.validate_3d
+uv run python -m aerospace.pinn.validate_2d
+
+# Run experiments
+uv run python -m aerospace.experiments.control_comparison_3d
+uv run python -m aerospace.experiments.control_comparison_2d
+uv run python -m aerospace.experiments.compare_sdre_vs_mpc
 ```
 
 Python 3.12+ required. Use `uv run python` — the system `python` may be 3.8.
+
+Dependencies: `numpy`, `scipy`, `matplotlib` (in pyproject.toml) plus `torch` (required by PINN/neural modules, install separately if needed).
 
 ## Architecture
 
