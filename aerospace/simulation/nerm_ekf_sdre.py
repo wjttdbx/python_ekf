@@ -149,8 +149,10 @@ class EKFSDRESimulation:
             A_SDC = self.dynamics.get_SDC_matrix(X_p_true, X_e_est, r_c, nu_dot, nu_ddot)
 
             solve_now = (k % self.are_interval == 0)
+            x_true_rel = state[0:6] - state[6:12]
             u_p, u_e = self.controller.compute_control(
-                A_SDC, x_ctrl, t=t, solve_are=solve_now
+                A_SDC, x_ctrl, t=t, solve_are=solve_now,
+                x_rel_e=x_true_rel,
             )
 
             # ── 真实状态传播 ─────────────────────────────────────────────────

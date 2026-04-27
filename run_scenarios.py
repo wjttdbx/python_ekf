@@ -38,32 +38,44 @@ SCENARIOS = {
     "scenario_1": {
         "name": "场景1：同平面同轨道",
         "chief_orbit": {"a": 6871.0, "e": 0.1, "i": 0.0, "Omega": 0.0, "omega": 0.0},
-        "X_e0_eci": np.array([-3284.62, -6329.16,    0.0,      6.79452, -2.76059,  0.0     ]), # 逃逸者初始ECI状态
-        "X_p0_eci": np.array([-3377.37, -6290.69,    0.0,      6.74444, -2.85544,  0.0     ]), # 追击者初始ECI状态
+        "X_e0_eci": np.array([-3284.62, -6329.16,    0.0,      6.79452, -2.76059,  0.0     ]),
+        "X_p0_eci": np.array([-3377.37, -6290.69,    0.0,      6.74444, -2.85544,  0.0     ]),
+        "gamma": np.sqrt(2),
     },
     "scenario_2": {
         "name": "场景2：不同平面同轨道",
         "chief_orbit": {"a": 6871.0, "e": 0.1, "i": 0.0, "Omega": 0.0, "omega": 0.0},
         "X_e0_eci": np.array([-7457.23,  1167.26,    0.0,     -1.18375, -6.79734,  0.0     ]),
         "X_p0_eci": np.array([-7439.72,  1263.48,  -22.0542,  -1.28183, -6.7803,   0.118351]),
+        "gamma": np.sqrt(2),
     },
     "scenario_3": {
         "name": "场景3：同平面不同轨道（低轨道）",
         "chief_orbit": {"a": 6871.0, "e": 0.1, "i": 0.0, "Omega": 0.0, "omega": 0.0},
         "X_e0_eci": np.array([ 719.856,  6691.72,    0.0,     -7.611,    1.58426,  0.0     ]),
         "X_p0_eci": np.array([ 786.174,  6616.76,    0.0,     -7.63541,  1.67614,  0.0     ]),
+        "gamma": np.sqrt(2),
     },
     "scenario_4": {
         "name": "场景4：同平面不同轨道（高轨道）",
         "chief_orbit": {"a": 6871.0, "e": 0.1, "i": 0.0, "Omega": 0.0, "omega": 0.0},
         "X_e0_eci": np.array([ 3668.07, -5287.73,    0.0,      6.2898,   5.12867,  0.0     ]),
         "X_p0_eci": np.array([ 3637.51, -5383.14,    0.0,      6.31566,  5.02984,  0.0     ]),
+        "gamma": np.sqrt(2),
     },
     "scenario_5": {
         "name": "场景5：不同平面不同轨道（高轨道）",
         "chief_orbit": {"a": 6871.0, "e": 0.1, "i": 0.0, "Omega": 0.0, "omega": 0.0},
         "X_e0_eci": np.array([-7368.1,  -1596.62,    0.0,      1.62119, -6.7158,   0.0     ]),
         "X_p0_eci": np.array([-7447.48, -1541.82,   26.9125,   1.54551, -6.7007,   0.116961]),
+        "gamma": np.sqrt(2),
+    },
+    "scenario_6": {
+        "name": "场景6：同平面同轨道（无机动）",
+        "chief_orbit": {"a": 6871.0, "e": 0.1, "i": 0.0, "Omega": 0.0, "omega": 0.0},
+        "X_e0_eci": np.array([-3284.62, -6329.16,    0.0,      6.79452, -2.76059,  0.0     ]),
+        "X_p0_eci": np.array([-3377.37, -6290.69,    0.0,      6.74444, -2.85544,  0.0     ]),
+        "gamma": np.inf,
     },
 }
 
@@ -132,7 +144,8 @@ def run_scenario(key: str, cfg: dict, noisy: bool, out_dir: Path, seed: int = 42
 
     # 2. 动力学、控制器初始化
     orb  = OrbitalDynamics(mu=MU, a_c=cfg["chief_orbit"]["a"], e_c=cfg["chief_orbit"]["e"])
-    ctrl = SDREGameController(Q=np.eye(6), R=np.eye(3) * 1e13, gamma=GAMMA)
+    gamma_val = cfg.get("gamma", GAMMA)
+    ctrl = SDREGameController(Q=np.eye(6), R=np.eye(3) * 1e13, gamma=gamma_val)
 
     # 3. 估计初值与 EKF 设置
     if noisy:

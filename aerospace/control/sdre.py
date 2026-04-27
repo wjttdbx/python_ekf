@@ -132,7 +132,8 @@ class SDREGameController:
 
     def compute_control(self, A_SDC: np.ndarray, x_rel: np.ndarray,
                         t: float = None,
-                        solve_are: bool = True) -> tuple[np.ndarray, np.ndarray]:
+                        solve_are: bool = True,
+                        x_rel_e: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
         """计算当前时刻的推力加速度。
 
         Parameters
@@ -140,12 +141,15 @@ class SDREGameController:
         A_SDC : (6, 6) ndarray
             当前状态下的系统 SDC 矩阵
         x_rel : (6,) ndarray
-            相对状态向量 [x, y, z, vx, vy, vz]
+            追踪星使用的相对状态（可为 EKF 估计值）
         t : float, optional
             当前仿真时间 (s)，用于日志显示
         solve_are : bool, optional
             是否重新求解 ARE。设为 False 时直接复用 last_P，适用于 ARE 更新频率
             低于控制频率的场景（稀疏 ARE 更新）。默认 True。
+        x_rel_e : (6,) ndarray, optional
+            逃逸星使用的相对状态（全知时传入真实相对状态）。
+            为 None 时与追踪星共用 x_rel。
 
         Returns
         -------
@@ -182,11 +186,12 @@ class SDREGameController:
                 )
             P = self.last_P
 
-        # 计算推力：u_p = -R^-1 B_p^T P x
+        # 计算推力：u_p = -R^-1 B_p^T P x（追方用估计状态）
         u_p = - self.R_inv @ self.B_p.T @ P @ x_rel
-        
-        # u_e = gamma^-2 R^-1 B_e^T P x
-        u_e = self.gamma**(-2) * self.R_inv @ self.B_e.T @ P @ x_rel
+
+        # u_e = gamma^-2 R^-1 B_e^T P x（逃方全知，用真实状态；未提供则退化为共用 x_rel）
+        _x_e = x_rel_e if x_rel_e is not None else x_rel
+        u_e = self.gamma**(-2) * self.R_inv @ self.B_e.T @ P @ _x_e
 
         self.step_times.append(time.perf_counter() - _t0)
 

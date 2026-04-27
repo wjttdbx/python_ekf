@@ -11,5 +11,8 @@ wheels/
 *.png
 
 # 无关文件
-pinn/
-experiments/
+aerospace/pinn/
+aerospace/experiments/
+
+*.pdf
+*.docx
