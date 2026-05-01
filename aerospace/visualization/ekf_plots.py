@@ -191,11 +191,17 @@ def plot_ekf_performance(result: EKFSDRESimResult, title: str, out_path: str) ->
     std_vel = np.sqrt(np.maximum(result.P_diag_history[3:6, :], 0)) * 1000
 
     innov = result.innov_history.copy()
-    innov[0]   *= 1000    # km→m
-    innov[1:3] *= 1000    # rad→mrad
+    n_innov = innov.shape[0]  # 2 (angle_only) 或 3 (range_angle)
 
-    innov_labels = ["δρ", "δaz", "δel"]
-    innov_units  = ["m",  "mrad", "mrad"]
+    if n_innov == 2:
+        innov[0:2] *= 1000    # rad→mrad
+        innov_labels = ["δaz", "δel"]
+        innov_units  = ["mrad", "mrad"]
+    else:
+        innov[0]   *= 1000    # km→m
+        innov[1:3] *= 1000    # rad→mrad
+        innov_labels = ["δρ", "δaz", "δel"]
+        innov_units  = ["m",  "mrad", "mrad"]
 
     fig = plt.figure(figsize=(16, 12))
     fig.suptitle(title, fontsize=13, fontweight="bold")
@@ -232,17 +238,20 @@ def plot_ekf_performance(result: EKFSDRESimResult, title: str, out_path: str) ->
         ax.set_title(f"Vel error {_VEL[i]}")
         ax.grid(True, alpha=0.4); ax.legend(fontsize=7, loc="upper right")
 
-        # 新息（99 百分位裁剪）
+        # 新息（仅绘制存在的通道）
         ax = fig.add_subplot(gs[2, i])
-        lim_z = np.percentile(np.abs(innov[i]), 99) * 1.3 or 1.0
-        ax.set_ylim(-lim_z, lim_z)
-        ax.plot(t_h, innov[i], color=_C[i], lw=0.8, alpha=0.85)
-        ax.axhline(0, color="k", lw=0.6, ls="--")
-        if t_capture:
-            ax.axvline(t_capture, color="gray", lw=0.8, ls=":", label="capture")
-            ax.legend(fontsize=7, loc="upper right")
-        ax.set_xlabel("Time (h)"); ax.set_ylabel(innov_units[i])
-        ax.set_title(f"Innovation {innov_labels[i]}")
+        if i < n_innov:
+            lim_z = np.percentile(np.abs(innov[i]), 99) * 1.3 or 1.0
+            ax.set_ylim(-lim_z, lim_z)
+            ax.plot(t_h, innov[i], color=_C[i], lw=0.8, alpha=0.85)
+            ax.axhline(0, color="k", lw=0.6, ls="--")
+            if t_capture:
+                ax.axvline(t_capture, color="gray", lw=0.8, ls=":", label="capture")
+                ax.legend(fontsize=7, loc="upper right")
+            ax.set_xlabel("Time (h)"); ax.set_ylabel(innov_units[i])
+            ax.set_title(f"Innovation {innov_labels[i]}")
+        else:
+            ax.set_visible(False)
         ax.grid(True, alpha=0.4)
 
     plt.savefig(out_path, dpi=150, bbox_inches="tight")

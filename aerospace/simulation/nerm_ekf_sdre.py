@@ -108,7 +108,8 @@ class EKFSDRESimulation:
         u_e_hist      = np.zeros((3, N + 1))
         dist_hist     = np.zeros(N + 1)
         ekf_err_hist  = np.zeros((6, N + 1))
-        innov_hist    = np.zeros((3, N + 1))
+        innov_dim     = self.ekf.R.shape[0]
+        innov_hist    = np.zeros((innov_dim, N + 1))
         P_diag_hist   = np.zeros((6, N + 1))
 
         def _record(k: int, st: np.ndarray, x_est: np.ndarray,
@@ -177,8 +178,9 @@ class EKFSDRESimulation:
                 )
                 x_priori, P_priori = self.ekf.predict(A_ekf, self._B_ctrl, u_p, u_e, self.dt)
 
-                z_true = RelativeStateEKF.measure(state[0:6], state[6:12])
-                z_meas = z_true + self.rng.multivariate_normal(np.zeros(3), self.ekf.R)
+                _angle_only = (self.ekf.R.shape[0] == 2)
+                z_true = RelativeStateEKF.measure(state[0:6], state[6:12], angle_only=_angle_only)
+                z_meas = z_true + self.rng.multivariate_normal(np.zeros(self.ekf.R.shape[0]), self.ekf.R)
                 innov = self.ekf.update(x_priori, P_priori, z_meas)
             else:
                 self.ekf.x = state[0:6] - state[6:12]

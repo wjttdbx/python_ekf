@@ -29,6 +29,7 @@ REF_DIST  = 3000.0              # 基准距离 (km)
 REF_SIGMA_POS = 10.0            # 基准位置误差 (km) @ REF_DIST
 REF_SIGMA_VEL = 1e-3            # 基准速度误差 (km/s) @ REF_DIST (对应 1 m/s)
 SIGMA_DIST = 1e10                   # 协方差 —— 距离测量不可信，设置极大值退化为纯测角
+SIGMA_RANGE = 0.01                  # 距离测量噪声标准差 (km = 10 m)
 GAMMA = np.sqrt(2)               # 控制逃方机动参数
 
 # ─── 场景定义（ECI 绝对状态，单位：km 和 km/s）──────────────────────────────────
@@ -105,94 +106,117 @@ def eci_to_lvlh_scenario(cfg: dict) -> tuple[np.ndarray, np.ndarray, float]:
     return X_p0, X_e0, nu0
 
 
-def create_ekf(noisy: bool, x0: np.ndarray, initial_dist: float) -> RelativeStateEKF:
+def create_ekf(mode: str, x0: np.ndarray, initial_dist: float) -> RelativeStateEKF:
     """
-    创建 EKF 实例，噪声参数根据初始距离进行比例缩放。
-    
-    逻辑：
-    位置误差标准差 = REF_SIGMA_POS * (当前距离 / 基准距离)
-    速度误差标准差 = REF_SIGMA_VEL * (当前距离 / 基准距离)
+    创建 EKF 实例。
+    mode: 'omniscient' | 'angle_only' | 'range_angle'
     """
-    if noisy:
-        # 有噪声模式：根据距离动态计算 P0 (初始协方差)
-        scale = initial_dist / REF_DIST
-        sigma_pos = REF_SIGMA_POS * scale   # 位置误差标准差 (km)
-        sigma_vel = REF_SIGMA_VEL * scale   # 速度误差标准差 (km/s)
-        P0 = np.diag([sigma_pos**2] * 3 + [sigma_vel**2] * 3)
-        # 测量噪声 R：距离量测权重设得很小（1e10），主要依靠角度
-        R_meas = np.diag([SIGMA_DIST, SIGMA_ANG**2, SIGMA_ANG**2])
-        # 过程噪声 Q
-        Q_proc = np.diag([5e-4, 5e-4, 5e-4, 5e-8, 5e-8, 5e-8])
-    else:
-        # 理想/准确模式：赋予极小的噪声协方差
+    scale = initial_dist / REF_DIST
+    sigma_pos = REF_SIGMA_POS * scale
+    sigma_vel = REF_SIGMA_VEL * scale
+
+    if mode == "omniscient":
         P0     = np.diag([1.0, 1.0, 1.0, 1e-4, 1e-4, 1e-4])
         R_meas = np.diag([SIGMA_DIST, 1e-30, 1e-30])
         Q_proc = np.zeros((6, 6))
+    elif mode == "angle_only":
+        P0     = np.diag([sigma_pos**2] * 3 + [sigma_vel**2] * 3)
+        R_meas = np.diag([SIGMA_ANG**2, SIGMA_ANG**2])  # 2×2，纯测角，无距离通道
+        Q_proc = np.diag([5e-4, 5e-4, 5e-4, 5e-8, 5e-8, 5e-8])
+    else:  # range_angle
+        P0     = np.diag([sigma_pos**2] * 3 + [sigma_vel**2] * 3)
+        R_meas = np.diag([SIGMA_RANGE**2, SIGMA_ANG**2, SIGMA_ANG**2])
+        Q_proc = np.diag([5e-4, 5e-4, 5e-4, 5e-8, 5e-8, 5e-8])
 
     return RelativeStateEKF(x0=x0, P0=P0, Q=Q_proc, R=R_meas)
 
 
-def run_scenario(key: str, cfg: dict, noisy: bool, out_dir: Path, seed: int = 42):
-    """运行单个追逃场景仿真，并绘制/保存结果。"""
-    # 1. 坐标转换
+MODE_LABELS = {
+    "omniscient": "全知 (Ideal SDRE)",
+    "angle_only":  "仅测角 (Angle-Only EKF)",
+    "range_angle": "距离+角度 (Range+Angle EKF)",
+}
+
+
+def run_scenario(key: str, cfg: dict, mode: str, out_dir: Path, seed: int = 42):
+    """运行单个追逃场景仿真。mode: 'omniscient' | 'angle_only' | 'range_angle'"""
     X_p0, X_e0, nu0 = eci_to_lvlh_scenario(cfg)
     x_rel0 = X_p0 - X_e0
     initial_dist = float(np.linalg.norm(x_rel0[:3]))
 
     print(f"\n{'='*60}")
-    print(f"场景: {cfg['name']}  |  初始距离: {initial_dist:.1f} km  |  {'有噪声 (EKF+SDRE)' if noisy else '理想测量 (Ideal SDRE)'}")
+    print(f"场景: {cfg['name']}  |  初始距离: {initial_dist:.1f} km  |  {MODE_LABELS[mode]}")
 
-    # 2. 动力学、控制器初始化
     orb  = OrbitalDynamics(mu=MU, a_c=cfg["chief_orbit"]["a"], e_c=cfg["chief_orbit"]["e"])
-    gamma_val = cfg.get("gamma", GAMMA)
-    ctrl = SDREGameController(Q=np.eye(6), R=np.eye(3) * 1e13, gamma=gamma_val)
+    ctrl = SDREGameController(Q=np.eye(6), R=np.eye(3) * 1e13, gamma=cfg.get("gamma", GAMMA))
 
-    # 3. 估计初值与 EKF 设置
+    noisy = mode != "omniscient"
     if noisy:
-        # 为 EKF 估计初值引入一次性随机噪声
         rng_init  = np.random.default_rng(seed)
         scale     = initial_dist / REF_DIST
-        sigma_pos = REF_SIGMA_POS * scale
-        sigma_vel = REF_SIGMA_VEL * scale
-        noise     = rng_init.standard_normal(6) * np.array([sigma_pos]*3 + [sigma_vel]*3)
+        noise     = rng_init.standard_normal(6) * np.array([REF_SIGMA_POS * scale] * 3 + [REF_SIGMA_VEL * scale] * 3)
         x0_est    = x_rel0 + noise
     else:
-        # 理想模式下估计值直接取真值
         x0_est = x_rel0.copy()
 
-    ekf = create_ekf(noisy=noisy, x0=x0_est, initial_dist=initial_dist)
-    # 为仿真过程中的测量噪声准备随机数生成器
+    ekf = create_ekf(mode=mode, x0=x0_est, initial_dist=initial_dist)
     rng = np.random.default_rng(seed + 1) if noisy else None
 
-    # 4. 构建并运行仿真引擎
     sim = EKFSDRESimulation(
         dynamics=orb, controller=ctrl, ekf=ekf,
         X_p0=X_p0, X_e0=X_e0, nu0=nu0,
         dt=10.0, are_interval=1, rng=rng,
     )
-
-    # 运行 5 个轨道周期
     result = sim.run(t_end=5.0 * orb.T_orbit)
 
-    # 5. 绘图与保存
-    tag   = "noisy" if noisy else "ideal"
-    title = f"{cfg['name']} — {'EKF+SDRE' if noisy else 'Ideal SDRE'}"
-    plot_single_simulation(result, orb, title=title, out_path=str(out_dir / f"{key}_{tag}"))
+    title = f"{cfg['name']} — {MODE_LABELS[mode]}"
+    plot_single_simulation(result, orb, title=title, out_path=str(out_dir / f"{key}_{mode}"))
     return result
 
 
 if __name__ == "__main__":
-    # 输出根目录
     root_out = Path("outputs/figures")
 
-    # 遍历所有定义的场景
     for key, cfg in SCENARIOS.items():
         out_dir = root_out / key
         out_dir.mkdir(parents=True, exist_ok=True)
-        
-        # 针对每个场景运行“噪声估计”和“理想真值”两种版本，便于对比分析
-        run_scenario(key, cfg, noisy=True,  out_dir=out_dir)
-        run_scenario(key, cfg, noisy=False, out_dir=out_dir)
+
+        results = {}
+        for mode in ("omniscient", "angle_only", "range_angle"):
+            results[mode] = run_scenario(key, cfg, mode=mode, out_dir=out_dir)
+
+        import matplotlib.pyplot as plt
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 7), sharex=True)
+
+        # 以轨道周期为时间单位（更直观）
+        T_orb = OrbitalDynamics(mu=MU, a_c=cfg["chief_orbit"]["a"], e_c=cfg["chief_orbit"]["e"]).T_orbit
+
+        # 上图：三模式真实距离
+        for mode, label in MODE_LABELS.items():
+            r = results[mode]
+            ax1.plot(r.t / T_orb, r.dist_history, label=label)
+        ax1.set_ylabel("真实相对距离 (km)")
+        ax1.set_title(f"{cfg['name']} — 三种测量模式对比")
+        ax1.legend()
+        ax1.grid(True)
+
+        # 下图：有噪声模式的距离估计误差
+        for mode in ("angle_only", "range_angle"):
+            r = results[mode]
+            est_dist = np.linalg.norm(r.x_est_history[:3, :], axis=0)
+            err = est_dist - r.dist_history
+            ax2.plot(r.t / T_orb, err, label=MODE_LABELS[mode])
+        ax2.axhline(0, color="k", linewidth=0.8, linestyle="--")
+        ax2.set_xlabel("时间 (轨道周期)")
+        ax2.set_ylabel("距离估计误差 (km)")
+        ax2.set_title("EKF 距离估计误差（估计距离 − 真实距离）")
+        ax2.legend()
+        ax2.grid(True)
+
+        fig.tight_layout()
+        fig.savefig(str(out_dir / f"{key}_comparison.png"), dpi=150)
+        plt.close(fig)
+        print(f"  对比图已保存: {out_dir / f'{key}_comparison.png'}")
 
     print("\n所有场景批量仿真完成。")
 
