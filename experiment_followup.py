@@ -54,6 +54,14 @@ def run_one(cfg, mode, seed, sigma_range=0.01, q_scale=1.0, share_x0_seed=None):
     orb = OrbitalDynamics(mu=MU, a_c=cfg["chief_orbit"]["a"], e_c=cfg["chief_orbit"]["e"])
     ctrl = SDREGameController(Q=np.eye(6), R=np.eye(3) * 1e13, gamma=cfg.get("gamma", GAMMA))
 
+    if mode == "ideal":
+        # 理想 SDRE：无 EKF，无噪声，使用真实相对状态
+        ekf = make_ekf("angle_only", x_rel0, init_dist)
+        sim = EKFSDRESimulation(dynamics=orb, controller=ctrl, ekf=ekf,
+                                X_p0=X_p0, X_e0=X_e0, nu0=nu0,
+                                dt=10.0, are_interval=1, rng=None)
+        return sim.run(t_end=5.0 * orb.T_orbit), orb
+
     seed_init = share_x0_seed if share_x0_seed is not None else seed
     rng_init = np.random.default_rng(seed_init)
     scale = init_dist / REF_DIST
@@ -78,8 +86,8 @@ def metrics(r):
     return dict(t_cap=t_cap, energy=energy, jitter=jitter, captured=r.captured)
 
 
-def run_group(cfg, label, **kwargs):
-    out = {"angle_only": [], "range_angle": []}
+def run_group(cfg, label, modes=("angle_only", "range_angle"), **kwargs):
+    out = {m: [] for m in modes}
     for seed in range(N_SEED):
         for mode in out:
             r, _ = run_one(cfg, mode, seed, **kwargs)
@@ -95,27 +103,43 @@ def run_group(cfg, label, **kwargs):
 
 
 def plot_groups(groups, out_path):
-    """各组 bar 对比"""
+    """各组 bar 对比（含理想 SDRE）"""
     fig, axes = plt.subplots(1, 3, figsize=(16, 4.5))
     labels = list(groups.keys())
     x = np.arange(len(labels))
-    w = 0.35
+
+    mode_names = {"angle_only": "仅测角", "range_angle": "距离+角度", "ideal": "理想SDRE (无EKF)"}
+    mode_colors = {"angle_only": "tab:orange", "range_angle": "tab:green", "ideal": "tab:blue"}
+    # 收集所有组中出现过的模式
+    all_modes_set = set()
+    for g in groups.values():
+        all_modes_set.update(g.keys())
+    all_modes = sorted(all_modes_set, key=lambda m: {"ideal": 0, "angle_only": 1, "range_angle": 2}.get(m, 99))
+    n_modes = len(all_modes)
+    w = 0.8 / n_modes
 
     def vals(metric):
-        ao = [np.nanmean([m[metric] for m in groups[l]["angle_only"]]) for l in labels]
-        ra = [np.nanmean([m[metric] for m in groups[l]["range_angle"]]) for l in labels]
-        return ao, ra
+        result = {}
+        for m in all_modes:
+            row = []
+            for l in labels:
+                if m in groups[l]:
+                    row.append(np.nanmean([s[metric] for s in groups[l][m]]))
+                else:
+                    row.append(np.nan)
+            result[m] = row
+        return result
 
     for ax, metric, ylabel, scale in [
         (axes[0], "t_cap", "捕获时间 (h)", 1/3600),
         (axes[1], "energy", "控制能量 ∫‖u‖² dt", 1.0),
         (axes[2], "jitter", "推力抖动均值 (km/s²)", 1.0),
     ]:
-        ao, ra = vals(metric)
-        ao = [v * scale for v in ao]
-        ra = [v * scale for v in ra]
-        ax.bar(x - w/2, ao, w, label="仅测角", color="tab:orange")
-        ax.bar(x + w/2, ra, w, label="距离+角度", color="tab:green")
+        vv = vals(metric)
+        for i, mode in enumerate(all_modes):
+            offset = (i - (n_modes - 1) / 2) * w
+            ax.bar(x + offset, [v * scale for v in vv[mode]], w,
+                   label=mode_names.get(mode, mode), color=mode_colors.get(mode))
         ax.set_xticks(x); ax.set_xticklabels(labels, rotation=20, ha="right")
         ax.set_ylabel(ylabel); ax.grid(True, alpha=0.4); ax.legend()
     fig.suptitle(f"实验对比（{N_SEED} 种子均值）", fontsize=12)
@@ -125,12 +149,18 @@ def plot_groups(groups, out_path):
 
 
 def plot_timeseries(cfg, out_path):
-    """单种子时序：估计距离、推力幅值、推力变化率"""
+    """单种子时序：估计距离、推力幅值、推力变化率（含理想 SDRE）"""
     seed = 0
-    r_a, orb = run_one(cfg, "angle_only", seed)
+    r_ideal, orb = run_one(cfg, "ideal", seed)
+    r_a, _ = run_one(cfg, "angle_only", seed)
     r_r, _ = run_one(cfg, "range_angle", seed)
     T = orb.T_orbit
     fig, axes = plt.subplots(3, 1, figsize=(11, 10), sharex=True)
+
+    # 理想 SDRE 用作基准
+    x_ideal = r_ideal.states[0:6, :] - r_ideal.states[6:12, :]
+    u_ideal = np.linalg.norm(r_ideal.u_p_history, axis=0)
+    du_ideal = np.linalg.norm(np.diff(r_ideal.u_p_history, axis=1), axis=0)
 
     for r, label, c in [(r_a, "仅测角", "tab:orange"), (r_r, "距离+角度", "tab:green")]:
         x_true = r.states[0:6, :] - r.states[6:12, :]
@@ -142,6 +172,10 @@ def plot_timeseries(cfg, out_path):
         axes[0].plot(r.t / T, est_d - true_d, color=c, label=f"{label} (估计-真实)")
         axes[1].plot(r.t / T, u, color=c, label=label)
         axes[2].plot(r.t[1:] / T, du, color=c, label=label, alpha=0.8)
+
+    # 理想 SDRE 推力 & 抖动作为基准
+    axes[1].plot(r_ideal.t / T, u_ideal, color="tab:blue", label="理想SDRE (无EKF)", linewidth=1.2)
+    axes[2].plot(r_ideal.t[1:] / T, du_ideal, color="tab:blue", label="理想SDRE (无EKF)", alpha=0.8)
 
     axes[0].axhline(0, color="k", linewidth=0.6, linestyle=":")
     axes[0].set_ylabel("距离估计偏差 (km)"); axes[0].legend(); axes[0].grid(True)
@@ -162,6 +196,7 @@ if __name__ == "__main__":
     print(f"实验场景: {cfg['name']}（{N_SEED} 种子）")
 
     groups = {}
+    groups["F. ideal SDRE"]    = run_group(cfg, "F. ideal SDRE (无EKF, 无噪声)", modes=("ideal",))
     groups["A. baseline"]      = run_group(cfg, "A. baseline")
     groups["B. perfect range"] = run_group(cfg, "B. perfect range", sigma_range=1e-6)
     groups["C. low Q (×0.01)"] = run_group(cfg, "C. low Q",  q_scale=0.01)

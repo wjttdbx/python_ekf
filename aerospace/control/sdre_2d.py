@@ -104,8 +104,17 @@ class SDREGameController2D:
         x_rel: np.ndarray,
         t: float | None = None,
         solve_are: bool = True,
+        x_rel_e: np.ndarray | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
         """计算 2D 面内推力加速度。
+
+        Parameters
+        ----------
+        A_SDC : (4, 4) ndarray  SDC 系统矩阵
+        x_rel : (4,) ndarray    追踪星看到的相对状态（可能是 EKF 估计）
+        t : float, optional     当前时间
+        solve_are : bool        是否求解 ARE（False 复用缓存 P）
+        x_rel_e : (4,) ndarray, optional  逃逸星看到的相对状态（真实值，用于全信息博弈）
 
         Returns
         -------
@@ -135,8 +144,9 @@ class SDREGameController2D:
                 raise RuntimeError("ARE 尚未初始化。")
             P = self.last_P
 
+        x_e_ctrl = x_rel_e if x_rel_e is not None else x_rel
         u_p = -self.R_inv @ self.B_p.T @ P @ x_rel
-        u_e = self.gamma ** (-2) * self.R_inv @ self.B_e.T @ P @ x_rel
+        u_e = self.gamma ** (-2) * self.R_inv @ self.B_e.T @ P @ x_e_ctrl
 
         if self.verbose and (self._step_count % self.verbose_interval == 0):
             self._log_P_info(P, x_rel, u_p, u_e, t)
