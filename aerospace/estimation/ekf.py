@@ -11,7 +11,7 @@ import numpy as np
 class RelativeStateEKF:
     """相对状态扩展卡尔曼滤波器。
 
-    测量模型：距离-方位角-仰角 [ρ, az, el]
+    测量模型：距离-方位角-仰角 [ρ, az, el] 或 方位角-仰角 [az, el]
     状态：相对位置和速度 [dx, dy, dz, dvx, dvy, dvz]
 
     Parameters
@@ -19,15 +19,17 @@ class RelativeStateEKF:
     x0 : (6,) ndarray  初始相对状态估计
     P0 : (6, 6) ndarray  初始协方差矩阵
     Q  : (6, 6) ndarray  过程噪声协方差矩阵
-    R  : (3, 3) ndarray  测量噪声协方差矩阵
+    R  : (m, m) ndarray  测量噪声协方差矩阵 (m=3 或 m=2)
+    angles_only : bool 是否仅使用角度测量 (仅 [az, el])
     """
 
     def __init__(self, x0: np.ndarray, P0: np.ndarray,
-                 Q: np.ndarray, R: np.ndarray):
+                 Q: np.ndarray, R: np.ndarray, angles_only: bool = False):
         self.x = x0.copy()
         self.P = P0.copy()
         self.Q = Q
         self.R = R
+        self.angles_only = angles_only
 
     # ── 静态工具方法 ──────────────────────────────────────────────────────────
 

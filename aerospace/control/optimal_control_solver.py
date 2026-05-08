@@ -1,13 +1,15 @@
 """
-直接配点法求解 NERM 2D 时间‑能量最优控制问题 (scipy.optimize 版本)
+CasADi + IPOPT 直接配点法求解 NERM 2D 时间-能量最优控制问题
 
-min_{T, u(·)}  T + gamma * ∫_0^T ||u(t)||^2 dt
-s.t. x(0)=x0, r(T)=0, NERM 2D 动力学
+    min_{T, u(·)}  T + gamma * ∫_0^T ||u(t)||² dt
+    s.t. x(0)=x0, ||r(T)|| <= tol, NERM 2D 相对运动力学
+
+使用归一化时间 τ = t/T ∈ [0,1]，梯形配点法。
+输出: (t_k, x_k, u_k, λ_k) — 最优轨迹 + 协态 (Pontryagin 乘子)
 """
 
 import numpy as np
-from scipy.optimize import minimize
-from scipy.integrate import solve_ivp
+import casadi as ca
 from pathlib import Path
 
 MU = 3.986e5
@@ -15,24 +17,21 @@ A_C = 15000.0
 E_C = 0.5
 
 
-def orbital_params(nu):
-    r_c = A_C * (1 - E_C**2) / (1 + E_C * np.cos(nu))
-    nu_dot = np.sqrt(MU * A_C * (1 - E_C**2)) / r_c**2
-    r_c_dot = np.sqrt(MU / (A_C * (1 - E_C**2))) * E_C * np.sin(nu)
+def _orbital_params(nu):
+    """Keplerian 参数 (CasADi 符号表达式)"""
+    r_c = A_C * (1 - E_C**2) / (1 + E_C * ca.cos(nu))
+    nu_dot = ca.sqrt(MU * A_C * (1 - E_C**2)) / r_c**2
+    r_c_dot = ca.sqrt(MU / (A_C * (1 - E_C**2))) * E_C * ca.sin(nu)
     nu_ddot = -2 * r_c_dot * nu_dot / r_c
     return r_c, nu_dot, nu_ddot
 
 
-def dynamics_5d(t, state, u_func, N_ctrl, T):
-    """ODE RHS: state=[dx,dy,dvx,dvy,nu], control 由分段常数插值"""
-    dx, dy, dvx, dvy, nu = state
+def _dynamics_rhs(x, u):
+    """NERM 2D 相对运动 RHS (CasADi 符号), x=[dx,dy,dvx,dvy,nu], u=[ux,uy]"""
+    dx, dy, dvx, dvy, nu = x[0], x[1], x[2], x[3], x[4]
 
-    # 从控制参数化中插值当前控制
-    idx = min(int(t / T * N_ctrl), N_ctrl - 1)
-    u = u_func(idx)
-
-    r_c, nu_dot, nu_ddot = orbital_params(nu)
-    r_p = np.sqrt((r_c + dx)**2 + dy**2)
+    r_c, nu_dot, nu_ddot = _orbital_params(nu)
+    r_p = ca.sqrt((r_c + dx)**2 + dy**2)
 
     grav_x = -MU * (r_c + dx) / r_p**3 + MU / r_c**2
     grav_y = -MU * dy / r_p**3
@@ -40,122 +39,170 @@ def dynamics_5d(t, state, u_func, N_ctrl, T):
     ddx = 2 * nu_dot * dvy + nu_ddot * dy + nu_dot**2 * dx + grav_x + u[0]
     ddy = -2 * nu_dot * dvx - nu_ddot * dx + nu_dot**2 * dy + grav_y + u[1]
 
-    return [dvx, dvy, ddx, ddy, nu_dot]
+    return ca.vertcat(dvx, dvy, ddx, ddy, nu_dot)
 
 
-def make_nlp(x0, gamma, N_ctrl):
-    """构建 NLP: 决策变量 = [u_x[0], u_y[0], ..., u_x[N-1], u_y[N-1], T]"""
+def solve_optimal_control(
+    x0: np.ndarray,
+    gamma: float = 1e7,
+    N: int = 40,
+    u_max: float = 0.01,
+    T_guess: float = None,
+    opts: dict = None,
+) -> dict:
+    """CasADi + IPOPT 梯形直接配点法求解最优控制。
 
-    def objective_and_constraints(vars_vec):
-        u_flat = vars_vec[:-1]
-        T = vars_vec[-1]
-        u_grid = u_flat.reshape(N_ctrl, 2)
-        dt_ctrl = T / N_ctrl
-        u_max = 0.01
-
-        # 推力限制惩罚
-        u_norm = np.linalg.norm(u_grid, axis=1)
-        penalty = 0
-        for i in range(N_ctrl):
-            if u_norm[i] > u_max:
-                penalty += 1e4 * (u_norm[i] - u_max)**2
-        if T < 100:
-            penalty += 1e6 * (100 - T)**2
-
-        # 仿真
-        def u_func(idx):
-            return u_grid[idx]
-
-        sol = solve_ivp(
-            dynamics_5d, (0, T), x0,
-            args=(u_func, N_ctrl, T),
-            method="RK45", rtol=1e-8, atol=1e-10,
-            max_step=dt_ctrl / 2,
-        )
-
-        x_final = sol.y[:, -1]
-        pos_err = np.sqrt(x_final[0]**2 + x_final[1]**2)
-
-        # 目标: T + gamma * Σ ||u_k||² * dt
-        J = T + gamma * np.sum(u_norm**2) * dt_ctrl + penalty + 1e3 * pos_err
-
-        return J
-
-    # 初始猜测
-    r0 = np.sqrt(x0[0]**2 + x0[1]**2)
-    T_guess = max(r0 * 50, 5000)
-    u0 = np.zeros(N_ctrl * 2)
-    x_init = np.concatenate([u0, [T_guess]])
-
-    # 边界
-    bounds = [(-0.01, 0.01)] * (N_ctrl * 2) + [(100, 100000)]
-
-    return objective_and_constraints, x_init, bounds
-
-
-def solve_optimal_control(x0, gamma=1e7, N_ctrl=30, max_iter=2000):
-    """求解最优控制问题
+    使用 τ = t/T 归一化时间，消除自由终端时间带来的非线性。
 
     Parameters
     ----------
-    x0 : (5,) ndarray
-    gamma : float  时间-能量权衡系数
-    N_ctrl : int   控制分段数
-    max_iter : int
+    x0 : (5,)     [dx, dy, dvx, dvy, nu]
+    gamma : float 时间-能量权衡系数
+    N : int       配点区间数
+    u_max : float 推力上限 (km/s²)
+    T_guess : float | None
+    opts : dict   额外 IPOPT 选项
 
     Returns
     -------
-    dict with t_grid, x_traj, u_traj, T_opt, converged
+    dict: t_grid(N+1,), x_traj(5,N+1), u_traj(2,N+1), lambda_traj(4,N+1),
+          T_opt, converged, gamma, stats
     """
-    obj_fn, x_init, bounds = make_nlp(x0, gamma, N_ctrl)
+    opti = ca.Opti()
 
-    result = minimize(
-        obj_fn, x_init,
-        method="L-BFGS-B",
-        bounds=bounds,
-        options={"maxiter": max_iter, "ftol": 1e-10, "gtol": 1e-8, "disp": True},
-    )
+    # ── 决策变量: 归一化时间网格 ──
+    X = opti.variable(5, N + 1)
+    U = opti.variable(2, N)
+    T_var = opti.variable()
+    dtau = 1.0 / N   # 归一化步长
 
-    converged = result.success
-    if not converged:
-        print(f"  Warning: optimizer returned {result.message}")
+    # ── 初始猜测 ──
+    r0 = float(np.sqrt(x0[0]**2 + x0[1]**2))
+    if T_guess is None:
+        T_guess = max(r0 * 80, 10000.0)
 
-    u_opt = result.x[:-1].reshape(N_ctrl, 2)
-    T_opt = result.x[-1]
-    dt_ctrl = T_opt / N_ctrl
+    opti.set_initial(T_var, T_guess)
+    # 状态: 线性插值
+    for i in range(5):
+        yf = 0.0 if i < 4 else (x0[4] + T_guess * 1e-4)  # nu 终点猜测
+        opti.set_initial(X[i, :], np.linspace(x0[i], yf, N + 1))
+    opti.set_initial(U, np.zeros((2, N)))
 
-    # 细化仿真获取轨迹
-    def u_fine(t):
-        idx = min(int(t / T_opt * N_ctrl), N_ctrl - 1)
-        return u_opt[idx]
+    # ── 目标: T + gamma * T * Σ ||u_k||² * dτ ──
+    # (归一化后 ∫_0^T ||u||² dt = T * ∫_0^1 ||u||² dτ)
+    J = T_var
+    for k in range(N):
+        J += gamma * T_var * ca.sumsqr(U[:, k]) * dtau
+    opti.minimize(J)
 
-    def dyn_5d(t, y):
-        dx, dy, dvx, dvy, nu = y
-        u = u_fine(t)
-        r_c, nu_dot, nu_ddot = orbital_params(nu)
-        r_p = np.sqrt((r_c + dx)**2 + dy**2)
-        grav_x = -MU * (r_c + dx) / r_p**3 + MU / r_c**2
-        grav_y = -MU * dy / r_p**3
-        ddx = 2 * nu_dot * dvy + nu_ddot * dy + nu_dot**2 * dx + grav_x + u[0]
-        ddy = -2 * nu_dot * dvx - nu_ddot * dx + nu_dot**2 * dy + grav_y + u[1]
-        return [dvx, dvy, ddx, ddy, nu_dot]
+    # ── 梯形配点约束: X_{k+1}=X_k + (T*dτ/2)*(f_k + f_{k+1}) ──
+    for k in range(N):
+        xk = X[:, k]
+        xk1 = X[:, k + 1]
+        uk = U[:, k]
+        fk = _dynamics_rhs(xk, uk)
+        fk1 = _dynamics_rhs(xk1, uk)
+        dt_half = 0.5 * T_var * dtau
+        opti.subject_to(xk1 == xk + dt_half * (fk + fk1))
 
-    sol = solve_ivp(dyn_5d, (0, T_opt), x0, method="RK45", rtol=1e-8, atol=1e-10)
+    # ── 边界约束 ──
+    opti.subject_to(X[:, 0] == x0)
+    # 终端: 位置范数平方 <= tol (软化硬约束)
+    opti.subject_to(X[0, -1]**2 + X[1, -1]**2 <= 1e-6)
 
-    # 提取控制时间序列
-    t_fine = sol.t
-    x_fine = sol.y
-    u_traj = np.column_stack([u_fine(t) for t in t_fine])
+    # ── 变量边界 ──
+    opti.subject_to(T_var >= 100)
+    opti.subject_to(T_var <= 500000)
+    opti.subject_to(opti.bounded(-u_max, U, u_max))
+    # 状态边界 (帮助求解器)
+    for k in range(N + 1):
+        opti.subject_to(opti.bounded(-2000, X[0, k], 2000))
+        opti.subject_to(opti.bounded(-2000, X[1, k], 2000))
 
-    return {
-        "t_grid": t_fine,
-        "x_traj": x_fine,
-        "u_traj": u_traj,
-        "T_opt": T_opt,
-        "converged": converged,
-        "gamma": gamma,
-        "result": result,
+    # ── IPOPT 选项 ──
+    ipopt_opts = {
+        "print_level": 1,
+        "tol": 1e-6,
+        "acceptable_tol": 1e-4,
+        "acceptable_iter": 10,
+        "max_iter": 1000,
+        "linear_solver": "mumps",
+        "hessian_approximation": "limited-memory",
+        "nlp_scaling_method": "gradient-based",
+        "obj_scaling_factor": -1,  # let IPOPT decide
     }
+    if opts:
+        ipopt_opts.update(opts)
+    opti.solver("ipopt", {}, ipopt_opts)
+
+    # ── 求解 ──
+    try:
+        sol = opti.solve()
+    except RuntimeError as e:
+        print(f"  IPOPT failed: {e}")
+        try:
+            sol = opti.debug
+        except Exception:
+            return dict(converged=False, message=str(e))
+
+    # ── 提取 ──
+    X_opt = sol.value(X)
+    U_opt = sol.value(U)
+    T_opt = float(sol.value(T_var))
+
+    t_grid = np.linspace(0, T_opt, N + 1)
+    U_traj = np.column_stack([U_opt[:, k] if k < N else U_opt[:, -1] for k in range(N + 1)])
+
+    # ── 协态恢复 (PMP: λ_vel = -2γ u*) ──
+    lambda_traj = np.zeros((4, N + 1))
+    for k in range(N + 1):
+        idx = min(k, N - 1)
+        lambda_traj[2:4, k] = -2.0 * gamma * U_opt[:, idx]
+
+    # 后向积分位置协态
+    def _costate_jac(lam, x_np):
+        dx, dy, dvx, dvy, nu = x_np
+        r_c = A_C * (1 - E_C**2) / (1 + E_C * np.cos(nu))
+        nu_dot = np.sqrt(MU * A_C * (1 - E_C**2)) / r_c**2
+        r_c_dot = np.sqrt(MU / (A_C * (1 - E_C**2))) * E_C * np.sin(nu)
+        nu_ddot = -2 * r_c_dot * nu_dot / r_c
+        r_p = np.sqrt((r_c + dx)**2 + dy**2)
+        r3, r5 = r_p**3, r_p**5
+        dgx_dx = -MU/r3 + 3*MU*(r_c+dx)**2/r5
+        dgx_dy = 3*MU*(r_c+dx)*dy/r5
+        dgy_dy = -MU/r3 + 3*MU*dy**2/r5
+        dfdx = np.array([
+            [0, 0, 1, 0],
+            [0, 0, 0, 1],
+            [nu_dot**2+dgx_dx, nu_ddot+dgx_dy, 0, 2*nu_dot],
+            [-nu_ddot+dgx_dy, nu_dot**2+dgy_dy, -2*nu_dot, 0],
+        ])
+        return -dfdx.T @ lam
+
+    lam = np.zeros(4)
+    lam[2:4] = lambda_traj[2:4, N]
+    for k in range(N, 0, -1):
+        dt_back = t_grid[k] - t_grid[k - 1]
+        lam = lam - _costate_jac(lam, X_opt[:, k]) * dt_back
+        lambda_traj[:, k - 1] = lam
+
+    stats = sol.stats()
+    converged = stats.get("success", False)
+
+    term_err = float(np.sqrt(X_opt[0,-1]**2 + X_opt[1,-1]**2))
+    print(f"  converged={converged}, T={T_opt:.0f}s={T_opt/3600:.2f}h, "
+          f"term_err={term_err:.2e}")
+
+    if converged:
+        E_ctrl = float(np.trapezoid(np.sum(U_traj**2, axis=0), t_grid))
+        peak_u = float(np.max(np.linalg.norm(U_traj, axis=0)))
+        print(f"  E_ctrl={E_ctrl:.4e}, peak_u={peak_u:.4e}")
+        print(f"  iter={stats.get('iter_count','?')}")
+
+    return dict(
+        t_grid=t_grid, x_traj=X_opt, u_traj=U_traj, lambda_traj=lambda_traj,
+        T_opt=T_opt, converged=converged, gamma=gamma, stats=stats,
+    )
 
 
 if __name__ == "__main__":
@@ -165,20 +212,20 @@ if __name__ == "__main__":
     x_rel = X_p0 - X_e0
     x0 = np.array([x_rel[0], x_rel[1], x_rel[2], x_rel[3], nu0])
 
+    out_dir = Path("outputs/optimal_control")
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     for gamma in [1e5, 3e5, 1e6, 3e6, 1e7]:
         print(f"\n{'='*60}")
         print(f"gamma = {gamma:.1e}")
         print(f"{'='*60}")
-        r = solve_optimal_control(x0, gamma=gamma, N_ctrl=40, max_iter=500)
-        print(f"\n  converged={r['converged']}, T={r['T_opt']:.1f}s={r['T_opt']/3600:.2f}h")
+        r = solve_optimal_control(x0, gamma=gamma, N=40)
         if r["converged"]:
             E = float(np.trapezoid(np.sum(r["u_traj"]**2, axis=0), r["t_grid"]))
-            peak_u = float(np.max(np.linalg.norm(r["u_traj"], axis=0)))
-            print(f"  E={E:.4e}, peak_u={peak_u:.4e}")
-            print(f"  terminal pos: [{r['x_traj'][0,-1]:.2e}, {r['x_traj'][1,-1]:.2e}]")
-
-            out_dir = Path("outputs/optimal_control")
-            out_dir.mkdir(parents=True, exist_ok=True)
-            np.savez(out_dir / f"sol_gamma_{gamma:.0e}.npz",
-                     t=r["t_grid"], x=r["x_traj"], u=r["u_traj"],
-                     T=r["T_opt"], gamma=gamma, x0=x0)
+            print(f"  E={E:.4e}")
+            print(f"  terminal: [{r['x_traj'][0,-1]:.2e}, {r['x_traj'][1,-1]:.2e}]")
+            np.savez(
+                out_dir / f"sol_gamma_{gamma:.0e}.npz",
+                t=r["t_grid"], x=r["x_traj"], u=r["u_traj"],
+                lam=r["lambda_traj"], T=r["T_opt"], gamma=gamma, x0=x0,
+            )
