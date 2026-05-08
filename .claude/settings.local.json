@@ -6,7 +6,11 @@
       "Bash(git fetch *)",
       "Bash(ssh *)",
       "Bash(git *)",
-      "Bash(uv run *)"
+      "Bash(uv run *)",
+      "Bash(xargs ls *)",
+      "Bash(python3 *)",
+      "Bash(uv add *)",
+      "Bash(grep -E \"^\\(轨道|配点|初始|===|运行|TPBVP|SDRE|  |对比|$\\)\")"
     ]
   }
 }

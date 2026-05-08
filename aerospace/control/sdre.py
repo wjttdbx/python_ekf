@@ -186,12 +186,14 @@ class SDREGameController:
                 )
             P = self.last_P
 
-        # 计算推力：u_p = -R^-1 B_p^T P x（追方用估计状态）
-        u_p = - self.R_inv @ self.B_p.T @ P @ x_rel
+        # 计算推力：注意 ARE 是以 R_eff (经博弈修正后的控制权重) 求解的，
+        # 因此控制律应使用 R_eff^-1 而非原始 R^-1。
+        # 追方使用估计状态：u_p = -R_eff^-1 B_p^T P x
+        u_p = - self.R_eff_inv @ self.B_p.T @ P @ x_rel
 
-        # u_e = gamma^-2 R^-1 B_e^T P x（逃方全知，用真实状态；未提供则退化为共用 x_rel）
+        # 逃方（全知或共用状态）：u_e = gamma^-2 R_eff^-1 B_e^T P x
         _x_e = x_rel_e if x_rel_e is not None else x_rel
-        u_e = self.gamma**(-2) * self.R_inv @ self.B_e.T @ P @ _x_e
+        u_e = self.gamma**(-2) * self.R_eff_inv @ self.B_e.T @ P @ _x_e
 
         self.step_times.append(time.perf_counter() - _t0)
 

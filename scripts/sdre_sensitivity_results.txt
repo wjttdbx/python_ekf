@@ -1,0 +1,19 @@
+SDRE sensitivity test - 2026-05-08 17:40:53
+R=1.0e+04, U_max=1.0e-04 km/s^2, T_mult=1 -> captured=False, t_end=18283.0s, final_dist=54713.098 km
+R=1.0e+04, U_max=1.0e-04 km/s^2, T_mult=3 -> captured=False, t_end=54849.1s, final_dist=60250.963 km
+R=1.0e+04, U_max=1.0e-03 km/s^2, T_mult=1 -> captured=False, t_end=18283.0s, final_dist=2163.991 km
+R=1.0e+04, U_max=1.0e-03 km/s^2, T_mult=3 -> captured=False, t_end=54849.1s, final_dist=11889.081 km
+R=1.0e+04, U_max=1.0e-02 km/s^2, T_mult=1 -> captured=False, t_end=18283.0s, final_dist=5631.044 km
+R=1.0e+04, U_max=1.0e-02 km/s^2, T_mult=3 -> captured=False, t_end=54849.1s, final_dist=10311.815 km
+R=1.0e+02, U_max=1.0e-04 km/s^2, T_mult=1 -> captured=False, t_end=18283.0s, final_dist=54749.628 km
+R=1.0e+02, U_max=1.0e-04 km/s^2, T_mult=3 -> captured=False, t_end=54849.1s, final_dist=60099.685 km
+R=1.0e+02, U_max=1.0e-03 km/s^2, T_mult=1 -> captured=False, t_end=18283.0s, final_dist=1705.667 km
+R=1.0e+02, U_max=1.0e-03 km/s^2, T_mult=3 -> captured=False, t_end=54849.1s, final_dist=14795.151 km
+R=1.0e+02, U_max=1.0e-02 km/s^2, T_mult=1 -> captured=False, t_end=18283.0s, final_dist=8354.522 km
+R=1.0e+02, U_max=1.0e-02 km/s^2, T_mult=3 -> captured=False, t_end=54849.1s, final_dist=33379.123 km
+R=1.0e+06, U_max=1.0e-04 km/s^2, T_mult=1 -> captured=False, t_end=18283.0s, final_dist=54614.015 km
+R=1.0e+06, U_max=1.0e-04 km/s^2, T_mult=3 -> captured=False, t_end=54849.1s, final_dist=60616.633 km
+R=1.0e+06, U_max=1.0e-03 km/s^2, T_mult=1 -> captured=False, t_end=18283.0s, final_dist=877.248 km
+R=1.0e+06, U_max=1.0e-03 km/s^2, T_mult=3 -> captured=False, t_end=54849.1s, final_dist=48492.312 km
+R=1.0e+06, U_max=1.0e-02 km/s^2, T_mult=1 -> captured=False, t_end=18283.0s, final_dist=2199.158 km
+R=1.0e+06, U_max=1.0e-02 km/s^2, T_mult=3 -> captured=False, t_end=54849.1s, final_dist=3337.077 km

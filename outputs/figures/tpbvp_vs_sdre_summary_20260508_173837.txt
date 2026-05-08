@@ -1,0 +1,20 @@
+TPBVP vs SDRE Comparison
+Generated: 2026-05-08 17:38:37
+
+指标                       TPBVP        SDRE
+──────────────────────────────────────────
+代价 J                 1.296e+10   1.191e+10
+终端位置误差(km)               0.000     743.374
+终端速度误差(m/s)             0.2202    845.9136
+ΔV (m/s)              1856.858    1149.412
+求解耗时(s)                   0.55        0.10
+收敛                           是           是
+
+TPBVP solved: True
+TPBVP J: 1.296309e+10
+TPBVP cpu_time: 0.553342 s
+SDRE captured: False
+SDRE J: 1.191444e+10
+SDRE cpu_time: 0.100910 s
+SDRE final position error (km): 743.374386
+SDRE final velocity error (m/s): 845.913592

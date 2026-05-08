@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 
 dependencies = [
+    "casadi>=3.7.2",
     "matplotlib>=3.10.8",
     "numpy>=2.4.4",
     "python-docx>=1.2.0",
