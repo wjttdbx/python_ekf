@@ -19,3 +19,6 @@ aerospace/experiments/
 *.pdf
 *.docx
 /node_modules/
+
+# macOS
+.DS_Store
