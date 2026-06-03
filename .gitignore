@@ -16,8 +16,7 @@ package-lock.json
 aerospace/pinn/
 aerospace/experiments/
 
-*.pdf
-*.docx
+
 /node_modules/
 
 # macOS

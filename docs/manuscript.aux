@@ -1,0 +1,167 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{Woffinden2009}
+\citation{Clohessy1960}
+\Newlabel{1}{a}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.1}Problem Context}{1}{subsection.1.1}\protected@file@percent }
+\citation{Clohessy1960}
+\citation{Tschauner1965}
+\citation{Yamanaka2002}
+\citation{Karlgaard2003}
+\citation{Dwidar2013}
+\citation{Alfriend2009}
+\citation{Woffinden2009,Woffinden2009b}
+\citation{Geller2014}
+\citation{Gaias2014}
+\citation{Sullivan2017,Sullivan2019}
+\citation{Cloutier1997}
+\citation{Cimen2012,Cimen2010}
+\citation{Dwidar2013}
+\citation{Tartaglia2016}
+\citation{Mracek1996}
+\citation{Park2016}
+\citation{Simhamed2021}
+\citation{Vepa2018}
+\citation{Okasha2011}
+\citation{Choukroun2013}
+\citation{Lee2012}
+\citation{Muralidhar2021}
+\citation{Park2016}
+\citation{Choukroun2013}
+\citation{Lee2012}
+\citation{Muralidhar2021}
+\citation{Park2016}
+\citation{Choukroun2013}
+\citation{Lee2012}
+\citation{Muralidhar2021}
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.2}Related Work}{2}{subsection.1.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Relationship between the present work and closely related prior studies.}}{2}{table.1}\protected@file@percent }
+\newlabel{tab:prior_work}{{1}{2}{Relationship between the present work and closely related prior studies}{table.1}{}}
+\citation{Park2016}
+\citation{Cimen2012}
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.3}Research Gap and Contributions}{3}{subsection.1.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}System Modeling and Problem Formulation}{3}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Reference Orbit Dynamics}{3}{subsection.2.1}\protected@file@percent }
+\newlabel{eq:rc}{{1}{3}{Reference Orbit Dynamics}{equation.1}{}}
+\newlabel{eq:nudot}{{2}{3}{Reference Orbit Dynamics}{equation.2}{}}
+\newlabel{eq:nuddot}{{3}{3}{Reference Orbit Dynamics}{equation.3}{}}
+\citation{Cimen2012}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Nonlinear Relative Motion in the LVLH Frame}{4}{subsection.2.2}\protected@file@percent }
+\newlabel{eq:accel_c}{{5}{4}{Nonlinear Relative Motion in the LVLH Frame}{equation.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}State-Dependent Coefficient Parameterization}{4}{subsection.2.3}\protected@file@percent }
+\newlabel{eq:exact}{{12}{4}{State-Dependent Coefficient Parameterization}{equation.12}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces LVLH coordinate frame and problem geometry. The chief spacecraft (target) is at the origin of the rotating LVLH frame. The $x$-axis points radially outward, the $y$-axis completes the along-track direction, and the $z$-axis (out of page) is aligned with the orbit normal.}}{5}{figure.1}\protected@file@percent }
+\newlabel{fig:lvlh}{{1}{5}{LVLH coordinate frame and problem geometry. The chief spacecraft (target) is at the origin of the rotating LVLH frame. The $x$-axis points radially outward, the $y$-axis completes the along-track direction, and the $z$-axis (out of page) is aligned with the orbit normal}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}SDC Parameterization Non-Uniqueness}{5}{subsection.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Angles-Only Measurement Model}{6}{subsection.2.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6}Optimal Approach Control Problem}{6}{subsection.2.6}\protected@file@percent }
+\newlabel{eq:cost}{{14}{6}{Optimal Approach Control Problem}{equation.14}{}}
+\newlabel{eq:are}{{15}{6}{Optimal Approach Control Problem}{equation.15}{}}
+\newlabel{eq:uc_opt}{{16}{6}{Optimal Approach Control Problem}{equation.16}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Unified EKF-SDRE Framework}{6}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}The Unified SDC Principle}{6}{subsection.3.1}\protected@file@percent }
+\newlabel{eq:ekf_predict}{{17}{6}{The Unified SDC Principle}{equation.17}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Unified EKF-SDRE algorithm flow. A single $A_{\text  {SDC}}(t_k)$ matrix computation per time step drives both the EKF prediction step (estimation path) and the SDRE ARE-based control computation (control path). The ``same matrix'' annotation highlights the key architectural innovation.}}{7}{figure.2}\protected@file@percent }
+\newlabel{fig:flow}{{2}{7}{Unified EKF-SDRE algorithm flow. A single $A_{\text {SDC}}(t_k)$ matrix computation per time step drives both the EKF prediction step (estimation path) and the SDRE ARE-based control computation (control path). The ``same matrix'' annotation highlights the key architectural innovation}{figure.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Single-step prediction error statistics (5480 steps, $e_c=0.5$, $\sigma _\theta =0.008^\circ $).}}{7}{table.2}\protected@file@percent }
+\newlabel{tab:pred_err}{{2}{7}{Single-step prediction error statistics (5480 steps, $e_c=0.5$, $\sigma _\theta =0.008^\circ $)}{table.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Numerical Validation: SDC Discretization Accuracy}{7}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Angles-Only Extended Kalman Filter}{7}{subsection.3.3}\protected@file@percent }
+\citation{Woffinden2009}
+\citation{Grzymisch2014}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Single-step prediction error diagnostic. (a) Forward-Euler SDC vs.\ RK4 position error distributions---both exhibit median errors of ${\sim }1$~m, far below measurement noise. (b) FE$-$RK4 position difference distribution (median 1.15~m). (c) Per-step position error versus instantaneous relative distance, showing that the error magnitude is uncorrelated with range.}}{8}{figure.3}\protected@file@percent }
+\newlabel{fig:pred_err}{{3}{8}{Single-step prediction error diagnostic. (a) Forward-Euler SDC vs.\ RK4 position error distributions---both exhibit median errors of ${\sim }1$~m, far below measurement noise. (b) FE$-$RK4 position difference distribution (median 1.15~m). (c) Per-step position error versus instantaneous relative distance, showing that the error magnitude is uncorrelated with range}{figure.3}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.1}Initialization}{8}{subsubsection.3.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.2}Prediction Step}{8}{subsubsection.3.3.2}\protected@file@percent }
+\newlabel{eq:ekf_pred_state}{{19}{8}{Prediction Step}{equation.19}{}}
+\newlabel{eq:ekf_pred_cov}{{20}{8}{Prediction Step}{equation.20}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.3}Update Step}{8}{subsubsection.3.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.4}Observability Considerations}{8}{subsubsection.3.3.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}SDRE Optimal Control}{9}{subsection.3.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.1}Symplectic Balancing}{9}{subsubsection.3.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.2}Control Law}{9}{subsubsection.3.4.2}\protected@file@percent }
+\newlabel{eq:uc_final}{{24}{9}{Control Law}{equation.24}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5}Sparse ARE Updates}{9}{subsection.3.5}\protected@file@percent }
+\@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces Unified EKF-SDRE Closed-Loop Step}}{9}{algorithm.1}\protected@file@percent }
+\newlabel{alg:step}{{1}{9}{Sparse ARE Updates}{algorithm.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Simulation Setup}{10}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Reference Scenario}{10}{subsection.4.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Baseline simulation parameters.}}{10}{table.3}\protected@file@percent }
+\newlabel{tab:params}{{3}{10}{Baseline simulation parameters}{table.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Filter and Controller Configuration}{10}{subsection.4.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces EKF and SDRE controller parameters.}}{10}{table.4}\protected@file@percent }
+\newlabel{tab:ekf_ctrl}{{4}{10}{EKF and SDRE controller parameters}{table.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Evaluation Metrics}{10}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Experimental Groups}{10}{subsection.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Results and Discussion}{11}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Baseline: Angles-Only vs.\ Full-Information (Experiment A)}{11}{subsection.5.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Experiment A: Baseline comparison.}}{11}{table.5}\protected@file@percent }
+\newlabel{tab:expA}{{5}{11}{Experiment A: Baseline comparison}{table.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Sensor Noise Sensitivity (Experiment B)}{11}{subsection.5.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Baseline comparison: angles-only EKF+SDRE vs.\ full-information SDRE. (a) LVLH $x$--$y$ trajectory. (b) Relative distance versus time (log scale). (c) Relative position components. (d) Thrust magnitude versus time. (e) Thrust components for the angles-only configuration. (f) Relative speed versus time, with terminal velocities annotated.}}{12}{figure.4}\protected@file@percent }
+\newlabel{fig:baseline}{{4}{12}{Baseline comparison: angles-only EKF+SDRE vs.\ full-information SDRE. (a) LVLH $x$--$y$ trajectory. (b) Relative distance versus time (log scale). (c) Relative position components. (d) Thrust magnitude versus time. (e) Thrust components for the angles-only configuration. (f) Relative speed versus time, with terminal velocities annotated}{figure.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces EKF estimation error time history with $3\sigma $ covariance envelope for the baseline angles-only configuration. (a--c) Position error components. (d--f) Velocity error components. The estimation error remains bounded within the $3\sigma $ envelope throughout the engagement, confirming consistent filter performance.}}{13}{figure.5}\protected@file@percent }
+\newlabel{fig:ekf_error}{{5}{13}{EKF estimation error time history with $3\sigma $ covariance envelope for the baseline angles-only configuration. (a--c) Position error components. (d--f) Velocity error components. The estimation error remains bounded within the $3\sigma $ envelope throughout the engagement, confirming consistent filter performance}{figure.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Experiment B: Noise sensitivity sweep results (mean $\pm $ std across 5 seeds).}}{13}{table.6}\protected@file@percent }
+\newlabel{tab:expB}{{6}{13}{Experiment B: Noise sensitivity sweep results (mean $\pm $ std across 5 seeds)}{table.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Monte Carlo Statistical Analysis (Experiment E)}{13}{subsection.5.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Sensor noise sensitivity analysis — the speed-softness trade-off. (a) Capture time and terminal relative velocity versus $\sigma _\theta $ (dual $y$-axis): a 100$\times $ noise increase reduces approach time by a factor of 2.3 but increases terminal $v_{\text  {rel}}$ by a factor of ${\sim }$20 (0.09~m/s $\to $ 1.76~m/s). The dotted reference lines mark full-information SDRE baselines. (b) Terminal $v_{\text  {rel}}$ boxplot across seeds per noise level, with the 2~m/s soft-rendezvous safety threshold and full-information reference. Variance grows substantially above $\sigma _\theta = 0.01^\circ $. (c) EKF position RMSE versus $\sigma _\theta $, showing estimation error saturation above ${\sim }0.02^\circ $. (d) Thrust mean and peak versus $\sigma _\theta $: peak thrust remains constant at ${\sim }1.96$~m/s$^2$, while mean thrust increases monotonically with noise.}}{14}{figure.6}\protected@file@percent }
+\newlabel{fig:noise_sens}{{6}{14}{Sensor noise sensitivity analysis — the speed-softness trade-off. (a) Capture time and terminal relative velocity versus $\sigma _\theta $ (dual $y$-axis): a 100$\times $ noise increase reduces approach time by a factor of 2.3 but increases terminal $v_{\text {rel}}$ by a factor of ${\sim }$20 (0.09~m/s $\to $ 1.76~m/s). The dotted reference lines mark full-information SDRE baselines. (b) Terminal $v_{\text {rel}}$ boxplot across seeds per noise level, with the 2~m/s soft-rendezvous safety threshold and full-information reference. Variance grows substantially above $\sigma _\theta = 0.01^\circ $. (c) EKF position RMSE versus $\sigma _\theta $, showing estimation error saturation above ${\sim }0.02^\circ $. (d) Thrust mean and peak versus $\sigma _\theta $: peak thrust remains constant at ${\sim }1.96$~m/s$^2$, while mean thrust increases monotonically with noise}{figure.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}CW Linear Model Baseline (Experiment C)}{14}{subsection.5.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Orbital Regime Sensitivity (Experiment D)}{14}{subsection.5.5}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Experiment E: Monte Carlo summary ($N = 200$). 95\% confidence intervals are shown where applicable.}}{15}{table.7}\protected@file@percent }
+\newlabel{tab:expE}{{7}{15}{Experiment E: Monte Carlo summary ($N = 200$). 95\% confidence intervals are shown where applicable}{table.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Monte Carlo statistical analysis ($N = 200$). (a) Capture time distribution (median 13.4~h, 195 captured trials). (b) Final miss distance distribution for captured trials. (c) Total $\Delta V$ distribution (median 8.86~km/s, P95 19.4~km/s).}}{15}{figure.7}\protected@file@percent }
+\newlabel{fig:mc_hist}{{7}{15}{Monte Carlo statistical analysis ($N = 200$). (a) Capture time distribution (median 13.4~h, 195 captured trials). (b) Final miss distance distribution for captured trials. (c) Total $\Delta V$ distribution (median 8.86~km/s, P95 19.4~km/s)}{figure.7}{}}
+\citation{Tschauner1965}
+\citation{Clohessy1960}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Monte Carlo EKF error analysis. (a) EKF position RMSE histogram---5 failure cases cluster at higher errors. (b) Initial distance versus EKF position RMSE, colored by outcome: failures (red $\times $) occur at large initial separations with adverse geometry. (c) EKF velocity RMSE distribution (captured trials, median 9.3~mm/s).}}{16}{figure.8}\protected@file@percent }
+\newlabel{fig:mc_ekf}{{8}{16}{Monte Carlo EKF error analysis. (a) EKF position RMSE histogram---5 failure cases cluster at higher errors. (b) Initial distance versus EKF position RMSE, colored by outcome: failures (red $\times $) occur at large initial separations with adverse geometry. (c) EKF velocity RMSE distribution (captured trials, median 9.3~mm/s)}{figure.8}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Experiment C: NERM+SDRE approach performance across eccentricities. CW+SDRE failed at all eccentricities.}}{16}{table.8}\protected@file@percent }
+\newlabel{tab:expC}{{8}{16}{Experiment C: NERM+SDRE approach performance across eccentricities. CW+SDRE failed at all eccentricities}{table.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.6}Discussion}{16}{subsection.5.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.6.1}Why SDC? The Case for Unified Parameterization}{16}{subsubsection.5.6.1}\protected@file@percent }
+\citation{Lee2012}
+\citation{Muralidhar2021}
+\citation{Choukroun2013}
+\citation{Park2016}
+\citation{Vepa2018}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Eccentricity robustness analysis. (a) NERM+SDRE capture time versus $e_c$---capture succeeds at all eccentricities, with time increasing from ${\sim }29{,}800$~s at $e=0.001$ to ${\sim }87{,}300$~s at $e=0.7$. (b) EKF position RMSE versus $e_c$ (U-shaped pattern, minimum near $e=0.5$). (c) Success rate comparison: NERM+SDRE achieves 100\% at all eccentricities; CW+SDRE fails at all eccentricities including $e=0.001$ (near-circular).}}{17}{figure.9}\protected@file@percent }
+\newlabel{fig:ecc_sweep}{{9}{17}{Eccentricity robustness analysis. (a) NERM+SDRE capture time versus $e_c$---capture succeeds at all eccentricities, with time increasing from ${\sim }29{,}800$~s at $e=0.001$ to ${\sim }87{,}300$~s at $e=0.7$. (b) EKF position RMSE versus $e_c$ (U-shaped pattern, minimum near $e=0.5$). (c) Success rate comparison: NERM+SDRE achieves 100\% at all eccentricities; CW+SDRE fails at all eccentricities including $e=0.001$ (near-circular)}{figure.9}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Experiment D: Orbital regime comparison (5 seeds per mode per regime).}}{17}{table.9}\protected@file@percent }
+\newlabel{tab:expD}{{9}{17}{Experiment D: Orbital regime comparison (5 seeds per mode per regime)}{table.9}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.6.2}Engineering Implications}{17}{subsubsection.5.6.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.6.3}Limitations}{18}{subsubsection.5.6.3}\protected@file@percent }
+\bibstyle{elsarticle-num}
+\bibcite{Clohessy1960}{{1}{}{{}}{{}}}
+\bibcite{Tschauner1965}{{2}{}{{}}{{}}}
+\bibcite{Yamanaka2002}{{3}{}{{}}{{}}}
+\bibcite{Dwidar2013}{{4}{}{{}}{{}}}
+\bibcite{Woffinden2009}{{5}{}{{}}{{}}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusions}{19}{section.6}\protected@file@percent }
+\bibcite{Geller2014}{{6}{}{{}}{{}}}
+\bibcite{Gaias2014}{{7}{}{{}}{{}}}
+\bibcite{Sullivan2017}{{8}{}{{}}{{}}}
+\bibcite{Cloutier1997}{{9}{}{{}}{{}}}
+\bibcite{Cimen2010}{{10}{}{{}}{{}}}
+\bibcite{Cimen2012}{{11}{}{{}}{{}}}
+\bibcite{Tartaglia2016}{{12}{}{{}}{{}}}
+\bibcite{Mracek1996}{{13}{}{{}}{{}}}
+\bibcite{Park2016}{{14}{}{{}}{{}}}
+\bibcite{Simhamed2021}{{15}{}{{}}{{}}}
+\bibcite{Vepa2018}{{16}{}{{}}{{}}}
+\bibcite{Okasha2011}{{17}{}{{}}{{}}}
+\bibcite{Woffinden2009b}{{18}{}{{}}{{}}}
+\bibcite{Choukroun2013}{{19}{}{{}}{{}}}
+\bibcite{Lee2012}{{20}{}{{}}{{}}}
+\bibcite{Muralidhar2021}{{21}{}{{}}{{}}}
+\bibcite{Wang2018}{{22}{}{{}}{{}}}
+\bibcite{Karlgaard2003}{{23}{}{{}}{{}}}
+\bibcite{Sullivan2019}{{24}{}{{}}{{}}}
+\bibcite{Alfriend2009}{{25}{}{{}}{{}}}
+\bibcite{Grzymisch2014}{{26}{}{{}}{{}}}
+\providecommand\NAT@force@numbers{}\NAT@force@numbers
+\gdef \@abspage@last{21}

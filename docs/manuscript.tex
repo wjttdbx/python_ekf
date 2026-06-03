@@ -1,0 +1,804 @@
+\documentclass[preprint,3p,times]{elsarticle}
+
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{hyperref}
+\usepackage{geometry}
+
+\journal{Acta Astronautica}
+
+\graphicspath{{./figures/}}
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{Simultaneous Estimation and Control via a Common State-Dependent Coefficient Matrix for Angles-Only Relative Navigation in Elliptical Orbits}
+
+\author[1]{First Author}
+\author[1]{Second Author}
+\address[1]{Institution, City, Country}
+
+\begin{abstract}
+This paper presents a comprehensive closed-loop validation of a common State-Dependent Coefficient (SDC) parameterization for angles-only relative navigation in elliptical orbits, where a single $A_{\text{SDC}}(t_k)$ matrix simultaneously drives the extended Kalman filter (EKF) prediction step and the state-dependent Riccati equation (SDRE) optimal control computation. Because the SDC parameterization satisfies the algebraic identity $A(x) \cdot x \equiv f(x)$, the EKF linearization point $\hat{x}_{k|k}$ and the controller design point share the same state-dependent system matrix---eliminating the model mismatch that arises when estimation and control use different dynamical representations. A forward-Euler SDC discretization introduces a median per-step position error of 1.15~m, two orders of magnitude below the angles-only measurement uncertainty (${\sim}140$~m at typical ranges), confirming that the common-matrix discretization is numerically adequate for closed-loop purposes.
+
+Closed-loop performance is evaluated on a medium-Earth orbit scenario ($a_c = 15{,}000$~km, $e_c = 0.5$, initial separation 866~km) through five experiment groups: (A)~angles-only EKF+SDRE versus full-information SDRE, (B)~sensor noise sensitivity sweep ($\sigma_\theta \in [0.001^\circ, 0.1^\circ]$, 30 trials), (C)~CW linear model baseline on NERM truth dynamics ($e \in [0.001, 0.7]$), (D)~orbital regime sensitivity (LEO, MEO, GEO), and (E)~a 200-trial Monte Carlo analysis with randomized initial conditions. The angles-only EKF+SDRE achieves approach to within 100~m at 54,800~s with position RMSE of 8.16~km. A counterintuitive finding emerges: increasing sensor noise from $0.001^\circ$ to $0.1^\circ$ reduces approach time by a factor of 2.3 (87,000~s to 38,470~s) while peak thrust remains constant at $1.96~\text{m/s}^2$, an effect that holds across three orders of magnitude in initial distance. The CW model diverges at all tested eccentricities---the root cause is an 80\% overestimation of the gravity gradient at 866~km, not orbital eccentricity. Monte Carlo analysis yields 97.5\% success rate (195/200, 95\% CI: [94.3\%, 99.1\%]) with median approach time of 13.4~h. These results establish the common SDC-matrix approach as a practical and statistically reliable method for angles-only relative navigation and optimal control in elliptical orbits.
+\end{abstract}
+
+\begin{keyword}
+angles-only navigation \sep extended Kalman filter \sep state-dependent Riccati equation \sep spacecraft relative motion \sep relative navigation \sep elliptical orbit
+\end{keyword}
+
+\end{frontmatter}
+
+%=====================================================================
+\section{Introduction}
+%=====================================================================
+
+\subsection{Problem Context}
+
+Spacecraft relative navigation and autonomous approach are fundamental capabilities for on-orbit servicing, debris removal, formation flying, and non-cooperative target proximity operations. These missions require the chaser spacecraft to estimate the relative position and velocity of a target using onboard sensors, and to compute control commands that reduce the relative distance to enable docking, capture, or inspection.
+
+Optical cameras represent the most practical onboard sensor for relative navigation, providing bearing measurements (azimuth and elevation angles) but no direct range information. This angles-only measurement constraint introduces a fundamental observability challenge: under linear constant-velocity dynamics, relative range cannot be uniquely determined from angular measurements alone~\cite{Woffinden2009}.
+
+A second challenge arises from the orbital environment: spacecraft operating in elliptical orbits experience time-varying and nonlinear gravitational effects that violate the assumptions of the classical Clohessy-Wiltshire (CW) linear model~\cite{Clohessy1960}. While the CW equations assume a circular reference orbit and small separations, real mission scenarios frequently involve elliptical orbits with separations of hundreds to thousands of kilometers, where nonlinear gravitational differential effects become non-negligible.
+
+A third challenge is methodological: the estimation and control subsystems in a relative navigation architecture typically employ different dynamical models---for instance, a linearized CW model for the EKF and a nonlinear model for the controller. This model mismatch can degrade both estimation accuracy and control performance, yet it is rarely addressed systematically.
+
+\subsection{Related Work}
+
+\textbf{Relative motion dynamics.} The CW equations~\cite{Clohessy1960} provide a closed-form linear model for relative motion under a circular chief orbit assumption. The Tschauner-Hempel (TH) equations~\cite{Tschauner1965} extend the linearization to elliptical orbits but introduce time-varying periodic coefficients. Yamanaka and Ankersen~\cite{Yamanaka2002} derived a nonsingular state transition matrix for the TH equations. However, linearizations of the gravitational potential assume $|\boldsymbol{\rho}| \ll |r_c|$, which breaks down at large separations. Karlgaard and Lutze~\cite{Karlgaard2003} quantified the second-order nonlinear corrections to CW that become non-negligible beyond a few tens of kilometers. For long-range relative navigation in elliptical orbits, full nonlinear models become necessary~\cite{Dwidar2013}. Alfriend et al.~\cite{Alfriend2009} provide a comprehensive treatment of spacecraft formation flying dynamics spanning linear, nonlinear, and perturbed models.
+
+\textbf{Angles-only relative navigation.} Woffinden and Geller~\cite{Woffinden2009,Woffinden2009b} established the fundamental observability criteria for angles-only navigation, proving that under linear CW dynamics, relative state is not fully observable from angular measurements alone, and subsequently characterized optimal rendezvous maneuvers that enhance observability. Geller and Klein~\cite{Geller2014} showed that a camera offset from the center of mass can restore observability without propulsive maneuvers. Gaias, D'Amico, and Ardaens~\cite{Gaias2014} demonstrated angles-only relative navigation using relative orbital elements on the PRISMA and AVANTI flight experiments. Sullivan and D'Amico~\cite{Sullivan2017,Sullivan2019} applied nonlinear Kalman filtering with relative orbital elements for improved angles-only estimation, later advancing to Gaussian mixture model filters for non-Gaussian measurement uncertainty.
+
+\textbf{SDRE optimal control.} The State-Dependent Riccati Equation method, introduced by Cloutier~\cite{Cloutier1997} and comprehensively surveyed by \c{C}imen~\cite{Cimen2012,Cimen2010}, extends linear quadratic optimal control to nonlinear systems through SDC parameterization. The key insight is that a nonlinear system $\dot{x} = f(x)$ can be factorized as $\dot{x} = A(x)x + B(x)u$, enabling pointwise solution of an algebraic Riccati equation to obtain a nonlinear feedback law. The SDRE approach has been applied to spacecraft formation flying~\cite{Dwidar2013}, rendezvous~\cite{Tartaglia2016}, and proximity operations.
+
+\textbf{SDRE filtering (SDREF).} Mracek, Cloutier, and D'Souza~\cite{Mracek1996} extended the SDRE concept to nonlinear estimation, proposing the SDREF as an alternative to the EKF. Park and Kim~\cite{Park2016} applied SDREF to spacecraft formation flying relative navigation, demonstrating that SDREF achieves the computational speed of linearized EKF with the accuracy of numerically integrated EKF (3-D RMS position 6.0~mm at 50~km separation). Simhamed and Ykhlef~\cite{Simhamed2021} benchmarked SDREF against EKF and found superior noise robustness and accuracy.
+
+\textbf{Estimation-control integration.} Vepa~\cite{Vepa2018} combined nonlinear TH equations with estimation and control using an LQNG methodology. Okasha and Newman~\cite{Okasha2011} used a TH-based EKF with glideslope guidance for autonomous rendezvous. Choukroun and Tekinalp~\cite{Choukroun2013} applied SDRE to both the estimation and control of spacecraft \emph{attitude}, demonstrating that the SDRE method can serve dual roles---this is conceptually the closest prior work, though in a different dynamical domain (attitude rather than relative position). Lee, Cochran, and No~\cite{Lee2012} combined an SDRE controller with an EKF for spacecraft formation flying, but employed different dynamical models for the two subsystems. Muralidhar and Kumar~\cite{Muralidhar2021} used an SDRE controller with a UKF estimator based on TH equations for elliptical-orbit rendezvous and docking.
+
+\begin{table}[h]
+\centering
+\caption{Relationship between the present work and closely related prior studies.}
+\label{tab:prior_work}
+\begin{tabular}{lcccc}
+\toprule
+Study & Domain & Filter & Controller & Common $A_{\text{SDC}}$? \\
+\midrule
+Park \& Kim~\cite{Park2016} & Rel.\ position & SDREF & --- (estimation only) & N/A \\
+Choukroun \& Tekinalp~\cite{Choukroun2013} & Attitude & SDREF & SDRE & Yes (same domain) \\
+Lee et al.~\cite{Lee2012} & Rel.\ position & EKF (linearized) & SDRE & No \\
+Muralidhar \& Kumar~\cite{Muralidhar2021} & Rel.\ position & UKF (TH-based) & SDRE & No \\
+\textbf{This work} & \textbf{Rel.\ position} & \textbf{EKF (SDC-based)} & \textbf{SDRE} & \textbf{Yes} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The key architectural distinction is that in the present work, the identical SDC matrix $A_{\text{SDC}}(\hat{x}_{k|k})$ evaluated at the EKF state estimate is used directly for both prediction and control---the estimation and control subsystems share not only the same dynamical model \emph{class} but the same numerical matrix instance at each time step. Park and Kim~\cite{Park2016} validated SDREF for relative navigation but did not close the loop with SDRE control. Choukroun and Tekinalp~\cite{Choukroun2013} used SDRE for both estimation and control but in the attitude domain, where the dynamics and measurement structure differ fundamentally from relative position navigation. Lee et al.~\cite{Lee2012} and Muralidhar and Kumar~\cite{Muralidhar2021} each used different dynamical representations for the filter and the controller.
+
+\subsection{Research Gap and Contributions}
+
+An underexplored opportunity exists at the intersection of these domains. SDREF employs an SDC parameterization for filtering~\cite{Park2016}, and SDRE has been extensively applied to control~\cite{Cimen2012}. Since the SDC representation satisfies the algebraic identity $A(x)\cdot x \equiv f(x)$, the same state-dependent matrix evaluated at the filter estimate $\hat{x}_{k|k}$ can, in principle, serve both subsystems---eliminating the model mismatch that arises when estimation and control employ different dynamical models. However, the closed-loop performance and limitations of such a common-parameterization architecture for \emph{relative position} navigation under angles-only constraints have not been systematically characterized. Table~\ref{tab:prior_work} summarizes the relationship between the present work and the most closely related prior studies.
+
+This paper presents a comprehensive experimental validation and characterization of the common SDC-matrix approach, making the following contributions:
+
+\begin{enumerate}
+    \item \textbf{Comprehensive closed-loop validation of the common SDC-matrix architecture.} We present a five-experiment characterization of angles-only EKF estimation supporting SDRE optimal approach control in elliptical orbits: baseline comparison, sensor noise sensitivity, CW model baseline, orbital regime sensitivity, and a 200-trial Monte Carlo analysis yielding 97.5\% success rate (195/200, 95\% CI: [94.3\%, 99.1\%]).
+
+    \item \textbf{Quantitative justification of the common-matrix discretization.} A diagnostic experiment comparing forward-Euler SDC discretization against fourth-order Runge-Kutta integration of the full nonlinear relative dynamics shows a median per-step position difference of only 1.15~m---two orders of magnitude below the angles-only measurement uncertainty, establishing numerical adequacy for closed-loop purposes.
+
+    \item \textbf{Systematic failure analysis of the CW linear model.} We show that the CW model fails on NERM truth dynamics at \emph{all} tested eccentricities ($e \in [0.001, 0.7]$). The failure mechanism is identified as an 80\% overestimation of the gravity gradient at 866~km separation combined with the absence of NERM's nonlinear anti-damping modes---establishing that NERM-based dynamics are a \emph{necessity} for medium-to-long-range relative navigation, regardless of orbital eccentricity.
+
+    \item \textbf{Characterization of a counterintuitive sensor noise effect.} We report and analyze the empirically observed finding that larger sensor noise can accelerate approach (by a factor of 2.3 across $\sigma_\theta \in [0.001^\circ, 0.1^\circ]$) while peak thrust remains constant at $1.96~\text{m/s}^2$. The mechanism---increased measurement innovations driving larger state corrections under the same SDRE feedback gain---is characterized and its practical implications are discussed.
+
+    \item \textbf{Engineering enhancements.} Symplectic balancing for ill-conditioned AREs (stabilizing matrices with $\|Q\|/\|S\| \approx 10^{13}$ condition number disparity) and sparse ARE update strategies are documented as practical contributions.
+\end{enumerate}
+
+%=====================================================================
+\section{System Modeling and Problem Formulation}
+%=====================================================================
+
+\subsection{Reference Orbit Dynamics}
+
+We consider a chief spacecraft in a Keplerian elliptical orbit about the Earth, characterized by semi-major axis $a_c$, eccentricity $e_c$, and gravitational parameter $\mu = 3.986 \times 10^5~\text{km}^3/\text{s}^2$. The orbital motion is parameterized by the true anomaly $\nu$, which evolves according to:
+
+\begin{align}
+r_c(\nu) &= \frac{a_c(1 - e_c^2)}{1 + e_c \cos \nu} \label{eq:rc} \\
+\dot{\nu} &= \frac{\sqrt{\mu a_c (1 - e_c^2)}}{r_c^2} \label{eq:nudot} \\
+\ddot{\nu} &= -\frac{2 \dot{r}_c \dot{\nu}}{r_c}, \quad \dot{r}_c = \sqrt{\frac{\mu}{a_c(1-e_c^2)}}\, e_c \sin \nu \label{eq:nuddot}
+\end{align}
+
+\subsection{Nonlinear Relative Motion in the LVLH Frame}
+
+The Local-Vertical Local-Horizontal (LVLH) frame is centered on the chief spacecraft: the $x$-axis points radially outward from Earth, the $z$-axis is aligned with the orbit normal, and the $y$-axis completes the right-handed triad (along-track direction).
+
+The absolute states of the chaser (c) and target (t) are expressed in the LVLH frame as:
+\begin{equation}
+\mathbf{X}_c = [x_c, y_c, z_c, v_{xc}, v_{yc}, v_{zc}]^T, \quad
+\mathbf{X}_t = [x_t, y_t, z_t, v_{xt}, v_{yt}, v_{zt}]^T
+\end{equation}
+
+The full system state is a 13-dimensional vector $\boldsymbol{\xi} = [\mathbf{X}_c^T, \mathbf{X}_t^T, \nu]^T$. The chaser's acceleration in the LVLH frame is:
+
+\begin{align}
+\ddot{x}_c &= 2\dot{\nu}\dot{y}_c + \ddot{\nu}y_c + \dot{\nu}^2 x_c - \frac{\mu(r_c + x_c)}{r_c^3} + \frac{\mu}{r_c^2} + u_{cx} \label{eq:accel_c} \\
+\ddot{y}_c &= -2\dot{\nu}\dot{x}_c - \ddot{\nu}x_c + \dot{\nu}^2 y_c - \frac{\mu y_c}{r_c^3} + u_{cy} \\
+\ddot{z}_c &= -\frac{\mu z_c}{r_c^3} + u_{cz}
+\end{align}
+
+where $r_c^{\text{geo}} = \sqrt{(r_c + x_c)^2 + y_c^2 + z_c^2}$ is the chaser's geocentric distance. The target's acceleration $\ddot{\mathbf{r}}_t$ follows the identical form with subscripts $t$, possibly including unknown maneuver accelerations $\mathbf{u}_t$ (treated as process noise or a disturbance by the chaser's filter). The differential control acceleration is $\mathbf{u} = [u_{cx}-u_{tx}, u_{cy}-u_{ty}, u_{cz}-u_{tz}]^T$.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.78\textwidth]{fig1_lvlh_frame.pdf}
+\caption{LVLH coordinate frame and problem geometry. The chief spacecraft (target) is at the origin of the rotating LVLH frame. The $x$-axis points radially outward, the $y$-axis completes the along-track direction, and the $z$-axis (out of page) is aligned with the orbit normal.}
+\label{fig:lvlh}
+\end{figure}
+
+\subsection{State-Dependent Coefficient Parameterization}
+
+The SDC parameterization factorizes the nonlinear vector field $f(\mathbf{x})$ into the pseudo-linear form $A(\mathbf{x})\mathbf{x}$ such that $A(\mathbf{x})\mathbf{x} \equiv f(\mathbf{x})$ holds exactly. The key factorization involves the gravitational differential term:
+
+\begin{equation}
+b_x = -\frac{\mu(r_c + x_c)}{(r_c^{\text{geo}})^3} + \frac{\mu(r_c + x_t)}{(r_t^{\text{geo}})^3}
+\end{equation}
+
+Defining the relative state $\mathbf{x}_{\text{rel}} = \mathbf{X}_c - \mathbf{X}_t$, the SDC factorization $b_x = A_{21}^{[1,:]} \cdot \mathbf{x}_{\text{rel}}$ is achieved through division by the squared relative distance:
+
+\begin{equation}
+A_{21}^{[1,:]} = \frac{b_x}{\|\mathbf{x}_{\text{rel}}\|^2 + \varepsilon} \cdot \mathbf{x}_{\text{rel}}^T
+\end{equation}
+
+where $\varepsilon = 10^{-6}$ prevents division by zero. The resulting $6 \times 6$ SDC matrix has the block structure:
+
+\begin{equation}
+A_{\text{SDC}} = \begin{bmatrix}
+\mathbf{0}_3 & \mathbf{I}_3 \\
+A_{21}(\nu, \mathbf{x}_{\text{rel}}) & A_{22}(\nu)
+\end{bmatrix}
+\end{equation}
+
+where $A_{22}$ contains the Coriolis coupling terms:
+\begin{equation}
+A_{22} = \begin{bmatrix}
+0 & 2\dot{\nu} & 0 \\
+-2\dot{\nu} & 0 & 0 \\
+0 & 0 & 0
+\end{bmatrix}
+\end{equation}
+
+A critical property used throughout this work is the \textbf{exact reconstruction identity}:
+\begin{equation}
+A_{\text{SDC}}(\mathbf{x}) \cdot \mathbf{x} \equiv f(\mathbf{x}) \label{eq:exact}
+\end{equation}
+This is not a first-order Taylor truncation but an algebraic identity---the SDC factorization reconstructs the full nonlinear vector field at the evaluation point without approximation error.
+
+\subsection{SDC Parameterization Non-Uniqueness}
+
+A well-known property of the SDC framework is that the factorization $A(\mathbf{x})\mathbf{x} \equiv f(\mathbf{x})$ is not unique for systems of dimension $n > 1$~\cite{Cimen2012}. Given any valid factorization $A(\mathbf{x})$, any matrix $\Delta A(\mathbf{x})$ satisfying $\Delta A(\mathbf{x}) \cdot \mathbf{x} = 0$ for all $\mathbf{x}$ yields an equally valid alternative $A'(\mathbf{x}) = A(\mathbf{x}) + \Delta A(\mathbf{x})$. Different parameterizations produce different $A_{\text{SDC}}$ matrices and, consequently, different ARE solutions and different feedback laws---even though they all represent the same underlying nonlinear dynamics at the algebraic level.
+
+The parameterization adopted in Eqs.~(9)--(11) distributes the gravitational differential term $b_x$ across the relative state components proportionally to $\mathbf{x}_{\text{rel}}$. This choice---sometimes called the ``standard'' SDC factorization---is motivated by two considerations. First, it preserves the structural interpretation of $A_{21}$ as a state-dependent effective gravity gradient, with each row capturing how the differential acceleration along the corresponding LVLH axis depends on the relative position components. Second, when evaluated at a given state estimate $\hat{\mathbf{x}}_{k|k}$, this factorization yields an $A_{\text{SDC}}$ whose eigenvalues approximate the local stability characteristics of the nonlinear relative dynamics, which is a desirable property for both the EKF transition matrix and the SDRE design model.
+
+However, alternative factorizations are possible. For instance, the gravitational term could be attributed entirely to the radial component (placing $b_x$ in $A_{21}^{[1,1]}$ only) or distributed according to a different weighting scheme. Different parameterizations would yield different EKF predictions (via different $F_k = I + A_{\text{SDC}}\Delta t$) and different SDRE control laws (via different ARE solutions), even though the algebraic identity $A(x)x \equiv f(x)$ is preserved in all cases. The sensitivity of closed-loop performance to the parameterization choice is not investigated in the present work and constitutes a limitation; we employ the standard factorization throughout, and all quantitative results reported in Section~5 are conditional on this choice.
+
+\subsection{Angles-Only Measurement Model}
+
+The onboard optical sensor provides bearing measurements:
+\begin{align}
+\mathbf{z} = \begin{bmatrix} \alpha \\ \varepsilon \end{bmatrix} =
+\begin{bmatrix}
+\arctan2(y_{\text{rel}}, x_{\text{rel}}) \\
+\arcsin(z_{\text{rel}} / \rho)
+\end{bmatrix} + \mathbf{v}, \quad \mathbf{v} \sim \mathcal{N}(\mathbf{0}, \mathbf{R})
+\end{align}
+where $\rho = \|\mathbf{x}_{\text{rel}}^{[1:3]}\|$ is the true relative distance, and $\mathbf{R} = \text{diag}(\sigma_\theta^2, \sigma_\theta^2)$ with baseline $\sigma_\theta = 0.008^\circ$ (1$\sigma \approx 0.14$~mrad). No range measurement is available.
+
+\subsection{Optimal Approach Control Problem}
+
+The chaser's objective is to drive the relative state $\mathbf{x}_{\text{rel}}$ toward zero (or a desired terminal separation) while minimizing a quadratic cost functional:
+
+\begin{equation}
+J = \frac{1}{2} \int_0^\infty \left[ \mathbf{x}_{\text{rel}}^T Q_{\text{ctrl}} \mathbf{x}_{\text{rel}} + \mathbf{u}_c^T R_{\text{ctrl}} \mathbf{u}_c \right] dt \label{eq:cost}
+\end{equation}
+
+where $Q_{\text{ctrl}} \succeq 0$ is the state weighting matrix and $R_{\text{ctrl}} \succ 0$ penalizes control effort. Under the SDC parameterization, the optimal feedback control law is obtained by solving the state-dependent algebraic Riccati equation at each time step:
+
+\begin{equation}
+A_{\text{SDC}}^T P + P A_{\text{SDC}} - P B R_{\text{ctrl}}^{-1} B^T P + Q_{\text{ctrl}} = 0 \label{eq:are}
+\end{equation}
+
+yielding the nonlinear feedback law:
+\begin{equation}
+\mathbf{u}_c^* = -R_{\text{ctrl}}^{-1} B^T P \,\hat{\mathbf{x}}_{\text{rel}} \label{eq:uc_opt}
+\end{equation}
+
+The control input matrix is $B = [\mathbf{0}_3; \mathbf{I}_3]$. The target's possible maneuvers $\mathbf{u}_t$ are unknown to the chaser; in the nominal scenario the target is non-maneuvering ($\mathbf{u}_t = \mathbf{0}$). The control law~\eqref{eq:uc_opt} is the standard infinite-horizon SDRE regulator, which drives the estimated relative state to zero.
+
+%=====================================================================
+\section{Unified EKF-SDRE Framework}
+%=====================================================================
+
+\subsection{The Unified SDC Principle}
+
+The central insight of this work is that in the SDC framework, the EKF prediction step and the SDRE control computation share the same linearization point $\hat{\mathbf{x}}_{k|k}$. The EKF state prediction is:
+
+\begin{align}
+\hat{\mathbf{x}}_{k+1|k} &= (I + A(\hat{\mathbf{x}}_{k|k}) \cdot \Delta t) \cdot \hat{\mathbf{x}}_{k|k} + \Delta t \cdot B \cdot \mathbf{u}_k \label{eq:ekf_predict}
+\end{align}
+
+and the SDRE control design uses the same $A(\hat{\mathbf{x}}_{k|k})$ in the ARE of Eq.~\eqref{eq:are}. This is not a designed coincidence but a \textbf{theoretical necessity} of the SDC framework: the exact reconstruction property $A(x) \cdot x \equiv f(x)$ (Eq.~\ref{eq:exact}) means that $A(\hat{\mathbf{x}}_{k|k})$ is the unique matrix that exactly represents the nonlinear vector field at the filter's current state estimate---which is precisely the information the controller requires.
+
+In traditional architectures, the EKF and the controller employ different dynamical models: for example, a CW linear model for the EKF transition matrix and a nonlinear model for the controller. This introduces \textbf{model mismatch}: the filter predicts state evolution using dynamics that differ from those assumed by the controller. The unified SDC framework eliminates this mismatch entirely---both subsystems operate on the identical $A_{\text{SDC}}(t_k)$ derived from the same NERM SDC parameterization.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{fig2_flow_diagram.pdf}
+\caption{Unified EKF-SDRE algorithm flow. A single $A_{\text{SDC}}(t_k)$ matrix computation per time step drives both the EKF prediction step (estimation path) and the SDRE ARE-based control computation (control path). The ``same matrix'' annotation highlights the key architectural innovation.}
+\label{fig:flow}
+\end{figure}
+
+\subsection{Numerical Validation: SDC Discretization Accuracy}
+
+A possible objection to the unified approach is that the forward-Euler discretization $F = I + A_{\text{SDC}} \Delta t$ is a first-order approximation to the true state transition matrix $\Phi = \exp(A_{\text{SDC}} \Delta t)$. To quantify this discretization error, we conducted a diagnostic experiment comparing forward-Euler SDC prediction against a fourth-order Runge-Kutta (RK4) integration of the full 6-DOF nonlinear relative dynamics. At each simulation step ($\Delta t = 10$~s), both predictions are computed from the same EKF state estimate $\hat{\mathbf{x}}_{k|k}$, and compared against the true relative state obtained from the 13-DOF RK45 truth propagation.
+
+\begin{table}[h]
+\centering
+\caption{Single-step prediction error statistics (5480 steps, $e_c=0.5$, $\sigma_\theta=0.008^\circ$).}
+\label{tab:pred_err}
+\begin{tabular}{lcccc}
+\toprule
+Metric & Median & Mean & P95 & P99 \\
+\midrule
+$|\text{FE} - \text{RK4}|$ position (m) & 1.15 & 6.92 & 32.81 & 59.84 \\
+$|\text{FE} - \text{RK4}|$ velocity (mm/s) & $< 0.01$ & $< 0.01$ & $< 0.01$ & $< 0.01$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The median FE-RK4 position difference of 1.15~m is two orders of magnitude below the angles-only measurement uncertainty at typical ranges ($\rho \cdot \sigma_\theta \approx 140$~m at 1000~km). The velocity difference is negligible. The SDC exact reconstruction property compensates for the low-order forward-Euler discretization, making the unified $A_{\text{SDC}}(t_k)$ numerically equivalent to a full nonlinear integration scheme for the purposes of closed-loop estimation and control.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{fig3_prediction_error.pdf}
+\caption{Single-step prediction error diagnostic. (a) Forward-Euler SDC vs.\ RK4 position error distributions---both exhibit median errors of ${\sim}1$~m, far below measurement noise. (b) FE$-$RK4 position difference distribution (median 1.15~m). (c) Per-step position error versus instantaneous relative distance, showing that the error magnitude is uncorrelated with range.}
+\label{fig:pred_err}
+\end{figure}
+
+\subsection{Angles-Only Extended Kalman Filter}
+
+The EKF maintains a 6-DOF relative state estimate $\hat{\mathbf{x}} = [d\hat{x}, d\hat{y}, d\hat{z}, d\hat{v}_x, d\hat{v}_y, d\hat{v}_z]^T$ and associated covariance $P \in \mathbb{R}^{6 \times 6}$.
+
+\subsubsection{Initialization}
+The initial covariance is constructed from physical considerations:
+\begin{equation}
+P_0 = \text{diag}\big((\rho_0 \sigma_\theta)^2, (\rho_0 \sigma_\theta)^2, (\rho_0 \sigma_\theta)^2, (\sigma_\theta)^2, (\sigma_\theta)^2, (\sigma_\theta)^2\big)
+\end{equation}
+where $\rho_0 = \|\mathbf{X}_{c0} - \mathbf{X}_{t0}\|$ is the initial separation. The initial state estimate is $\hat{\mathbf{x}}_0 = \mathbf{X}_{c0} - \mathbf{X}_{t0}$, assuming the chaser knows its own position and the initial formation configuration.
+
+\subsubsection{Prediction Step}
+\begin{align}
+\hat{\mathbf{x}}_{k+1|k} &= (I + A_{\text{SDC}} \Delta t) \hat{\mathbf{x}}_{k|k} + \Delta t \cdot B \cdot (\mathbf{u}_c - \mathbf{u}_t) \label{eq:ekf_pred_state} \\
+P_{k+1|k} &= F_k P_{k|k} F_k^T + Q_{\text{EKF}}, \quad F_k = I + A_{\text{SDC}} \Delta t \label{eq:ekf_pred_cov}
+\end{align}
+where $Q_{\text{EKF}} = \text{diag}(5\times 10^{-4}, 5\times 10^{-4}, 5\times 10^{-4}, 5\times 10^{-8}, 5\times 10^{-8}, 5\times 10^{-8})$ is the process noise covariance (units: km$^2$ for position, km$^2$/s$^2$ for velocity), and the same $A_{\text{SDC}}$ from the control computation is used. Note that $Q_{\text{EKF}}$ (process noise covariance for the EKF) is distinct from $Q_{\text{ctrl}}$ (state weighting matrix in the SDRE cost functional, Eq.~\ref{eq:cost}). The target's control $\mathbf{u}_t$ is assumed known to the chaser (in the nominal scenario $\mathbf{u}_t = \mathbf{0}$); unknown maneuvers are absorbed by the process noise $Q_{\text{EKF}}$.
+
+\subsubsection{Update Step}
+The $2 \times 6$ measurement Jacobian for angles-only measurements is:
+\begin{align}
+H_{1,:} &= \begin{bmatrix} -\frac{y_{\text{rel}}}{\rho_{xy}^2} & \frac{x_{\text{rel}}}{\rho_{xy}^2} & 0 & \mathbf{0}_{1\times 3} \end{bmatrix} \\
+H_{2,:} &= \begin{bmatrix} -\frac{x_{\text{rel}} z_{\text{rel}}}{\rho^2 \rho_{xy}} & -\frac{y_{\text{rel}} z_{\text{rel}}}{\rho^2 \rho_{xy}} & \frac{\rho_{xy}}{\rho^2} & \mathbf{0}_{1\times 3} \end{bmatrix}
+\end{align}
+where $\rho_{xy} = \sqrt{x_{\text{rel}}^2 + y_{\text{rel}}^2}$. Angular innovation components are wrapped to $[-\pi, \pi]$. The standard Kalman gain and covariance update follow.
+
+\subsubsection{Observability Considerations}
+Under angles-only measurements, the linear CW system has an unobservable range mode~\cite{Woffinden2009}. Grzymisch and Fichter~\cite{Grzymisch2014} extended this analysis, characterizing unobservable maneuvers and geometric conditions that degrade observability. In the nonlinear NERM dynamics, the time-varying gravitational field and the chaser's own orbital motion provide natural excitation that improves observability. Nevertheless, at very large separations ($\rho > 1000$~km) or unfavorable viewing geometries (target near the local horizontal plane for extended periods), the observability Gramian can become ill-conditioned, leading to EKF divergence---as observed in 5 of the 200 Monte Carlo trials.
+
+\subsection{SDRE Optimal Control}
+
+\subsubsection{Symplectic Balancing}
+For the chosen parameters ($Q_{\text{ctrl}} = I_6$, $R_{\text{ctrl}} = 10^{13} \cdot I_3$), the Frobenius norm ratio $\|Q_{\text{ctrl}}\|_F / \|S\|_F \approx 10^{13}$ (where $S = B R_{\text{ctrl}}^{-1} B^T$) renders the Hamiltonian matrix severely ill-conditioned (condition number ${\sim}10^{18}$). Standard LAPACK Schur decomposition routinely fails.
+
+We employ symplectic balancing: define the scaling factor $\alpha = \sqrt{\|Q_{\text{ctrl}}\|_F / \|S\|_F}$, then solve the balanced ARE:
+\begin{equation}
+\tilde{A}^T \bar{P} + \bar{P} \tilde{A} - \bar{P} B \tilde{R}^{-1} B^T \bar{P} + \tilde{Q} = 0
+\end{equation}
+with $\tilde{Q} = Q_{\text{ctrl}}/\alpha$, $\tilde{R} = R_{\text{ctrl}}/\alpha$, and recover $P = \alpha \bar{P}$. If balancing still fails, a row-column rescaling of $A_{\text{SDC}}$ is applied as a fallback. This technique is essential for applying SDRE to spacecraft control problems with realistic thrust levels (${\sim}0.1$~mm/s$^2$).
+
+\subsubsection{Control Law}
+The optimal thrust command uses the EKF estimate:
+\begin{equation}
+\mathbf{u}_c^* = -R^{-1} B^T P \,\hat{\mathbf{x}}_{k|k} \label{eq:uc_final}
+\end{equation}
+The target's known maneuvers, if any, are incorporated through the differential term in the EKF prediction (Eq.~\ref{eq:ekf_pred_state}). The SDRE controller computes the chaser's optimal approach trajectory in closed loop, automatically adapting to the nonlinear orbital dynamics through the state-dependent $P$ matrix.
+
+\subsection{Sparse ARE Updates}
+
+The ARE solving step constitutes approximately 50\% of the per-step computation time. When the orbital parameters vary slowly relative to the control time step ($\Delta\nu \approx 0.001^\circ$ per $\Delta t = 10$~s), the $P$ matrix changes gradually. Setting the ARE update interval $N_{\text{are}} > 1$ reuses the cached $P$ for multiple control steps, trading minor optimality loss for significant computational savings.
+
+\begin{algorithm}[h]
+\caption{Unified EKF-SDRE Closed-Loop Step}
+\label{alg:step}
+\begin{algorithmic}[1]
+\REQUIRE $\boldsymbol{\xi}(t_k)$, $\hat{\mathbf{x}}_{k|k}$, $P_{k|k}$, $\nu(t_k)$
+\ENSURE $\boldsymbol{\xi}(t_{k+1})$, $\hat{\mathbf{x}}_{k+1|k+1}$, $P_{k+1|k+1}$, $\mathbf{u}_c$
+\STATE $r_c, \dot{\nu}, \ddot{\nu} \gets \text{get\_orbital\_params}(\nu_k)$
+\STATE $\mathbf{X}_t^{\text{est}} \gets \mathbf{X}_c^{\text{true}} - \hat{\mathbf{x}}_{k|k}$ \quad\COMMENT{requires chaser absolute nav.}
+\STATE $A_{\text{SDC}} \gets \text{get\_SDC\_matrix}(\mathbf{X}_c^{\text{true}}, \mathbf{X}_t^{\text{est}}, r_c, \dot{\nu}, \ddot{\nu})$ \quad\COMMENT{$\leftarrow$ sole SDC evaluation per step}
+\IF{$k \bmod N_{\text{are}} = 0$}
+    \STATE $P \gets \text{solve\_are\_balanced}(A_{\text{SDC}})$
+\ENDIF
+\STATE $\mathbf{u}_c \gets -R_{\text{ctrl}}^{-1} B^T P \,\hat{\mathbf{x}}_{k|k}$ \quad\COMMENT{SDRE optimal approach control}
+\STATE $\boldsymbol{\xi}(t_{k+1}) \gets \text{RK45}(\text{dynamics\_13d}, [t_k, t_k+\Delta t], \boldsymbol{\xi}(t_k), \mathbf{u}_c, \mathbf{u}_t)$
+\STATE $\hat{\mathbf{x}}_{k+1|k}, P_{k+1|k} \gets \text{EKF\_predict}(A_{\text{SDC}}, \mathbf{u}_c - \mathbf{u}_t, \Delta t)$ \quad\COMMENT{reuses $A_{\text{SDC}}$}
+\STATE $\mathbf{z}_k \gets \text{measure}(\boldsymbol{\xi}(t_{k+1})) + \mathcal{N}(0, R)$
+\STATE $\hat{\mathbf{x}}_{k+1|k+1}, P_{k+1|k+1} \gets \text{EKF\_update}(\hat{\mathbf{x}}_{k+1|k}, P_{k+1|k}, \mathbf{z}_k)$
+\end{algorithmic}
+\end{algorithm}
+
+Algorithm~\ref{alg:step} formalizes the complete closed-loop step. The SDC matrix $A_{\text{SDC}}$ is evaluated once per time step (line 3) and serves three purposes: (i)~the ARE for SDRE control computation (line 5), (ii)~the EKF state prediction via $F = I + A_{\text{SDC}}\Delta t$ (line 8), and (iii)~the EKF covariance propagation (line 8). The true state is propagated using the full 13-DOF nonlinear dynamics with RK45 integration, while the EKF operates on the 6-DOF SDC-linearized relative dynamics.
+
+We note an important modeling assumption in Algorithm~\ref{alg:step}: line 3 requires the chaser to know its own absolute state $\mathbf{X}_c^{\text{true}}$ to recover the target state estimate via $\mathbf{X}_t^{\text{est}} = \mathbf{X}_c^{\text{true}} - \hat{\mathbf{x}}_{k|k}$. In practice, this assumes the chaser has access to absolute orbit determination (e.g., via GNSS in low Earth orbit or ground-based tracking in higher orbits). For deep-space or GNSS-denied scenarios, absolute navigation uncertainty would introduce an additional error source not modeled in the present study. The common SDC-matrix framework is not dependent on this assumption---the SDC matrix $A_{\text{SDC}}$ can be evaluated at the best available estimates of both chaser and target states---but the quantitative results reported here are conditional on perfect chaser self-knowledge.
+
+%=====================================================================
+\section{Simulation Setup}
+%=====================================================================
+
+\subsection{Reference Scenario}
+
+\begin{table}[h]
+\centering
+\caption{Baseline simulation parameters.}
+\label{tab:params}
+\begin{tabular}{lrl}
+\toprule
+Parameter & Value & Description \\
+\midrule
+$a_c$ & 15,000 km & Chief semi-major axis \\
+$e_c$ & 0.5 & Chief eccentricity \\
+$\mu$ & $3.986 \times 10^5$ km$^3$/s$^2$ & Earth gravitational parameter \\
+$T_{\text{orbit}}$ & $\approx$ 51,600 s (14.3 h) & Orbital period \\
+$\nu_0$ & 0$^\circ$ & Initial true anomaly \\
+$\mathbf{X}_{c0}$ & [500, 500, 500, 0.01, 0.01, 0.01] & Chaser initial state \\
+$\mathbf{X}_{t0}$ & [0, 0, 0, 0, 0, 0] & Target initial state \\
+$\rho_0$ & 866 km & Initial relative distance \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Filter and Controller Configuration}
+
+\begin{table}[h]
+\centering
+\caption{EKF and SDRE controller parameters.}
+\label{tab:ekf_ctrl}
+\begin{tabular}{lrl}
+\toprule
+Parameter & Value & Description \\
+\midrule
+\multicolumn{3}{c}{\textit{EKF}} \\
+$\sigma_\theta$ & 0.008$^\circ$ (baseline) & Sensor angular accuracy (1$\sigma$) \\
+$R_{\text{EKF}}$ & $\text{diag}(\sigma_\theta^2, \sigma_\theta^2)$ & Measurement noise covariance \\
+$Q_{\text{EKF}}$ & $\text{diag}(5\times10^{-4}\times I_3, 5\times10^{-8}\times I_3)$ & Process noise cov.\ (pos: km$^2$, vel: km$^2$/s$^2$) \\
+\multicolumn{3}{c}{\textit{SDRE Controller}} \\
+$Q_{\text{ctrl}}$ & $I_6$ & State weight (unitless, normalized) \\
+$R_{\text{ctrl}}$ & $10^{13} \cdot I_3$ & Control penalty (s$^3$/km$^2$) \\
+$N_{\text{are}}$ & 1 (baseline) & ARE update interval \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Evaluation Metrics}
+
+\begin{enumerate}
+    \item \textbf{Approach performance}: time to achieve $\rho < 100$~m, final miss distance, success rate
+    \item \textbf{Estimation accuracy}: position and velocity RMSE of the EKF estimate relative to ground truth
+    \item \textbf{Control expenditure}: total $\Delta V = \int \|\mathbf{u}_c\|\, dt$, peak thrust $\max \|\mathbf{u}_c\|$, and mean thrust
+    \item \textbf{Computational efficiency}: wall-clock time per simulation step
+\end{enumerate}
+
+\subsection{Experimental Groups}
+
+\begin{description}
+    \item[Experiment A --- Baseline:] Angles-only EKF+SDRE versus full-information SDRE (no noise, true relative state). Evaluates the performance cost of operating under angles-only measurement constraints.
+
+    \item[Experiment B --- Sensor Noise Sensitivity:] $\sigma_\theta \in \{0.001^\circ, 0.004^\circ, 0.008^\circ, 0.02^\circ, 0.05^\circ, 0.1^\circ\}$, 5 random seeds per level (30 trials). Characterizes the relationship between sensor quality and closed-loop performance.
+
+    \item[Experiment C --- CW Model Baseline:] Comparison of NERM SDC versus CW constant $A$-matrix for EKF prediction and SDRE control, both operating on NERM 13-DOF truth dynamics. Eccentricities $e_c \in \{0.001, 0.1, 0.3, 0.5, 0.7\}$, 3 seeds per level (30 trials). Isolates the effect of the dynamics model choice.
+
+    \item[Experiment E --- Monte Carlo Analysis:] $N = 200$ trials with randomized initial positions ($\pm 300$~km Gaussian perturbation on both chaser and target positions) and independent measurement noise realizations. Provides statistical significance for performance claims.
+
+    \item[Experiment D --- Orbital Regime Sensitivity:] Angles-only EKF+SDRE and full-information SDRE evaluated at three orbital regimes: LEO ($a_c = 7{,}500$~km, $e_c = 0.1$), MEO ($a_c = 15{,}000$~km, $e_c = 0.5$, baseline), and GEO ($a_c = 42{,}164$~km, $e_c = 0.1$), 5 seeds each. Assesses robustness of the common SDC-matrix framework across orbital timescales spanning a factor of 13 in orbital period.
+\end{description}
+
+%=====================================================================
+\section{Results and Discussion}
+%=====================================================================
+
+\subsection{Baseline: Angles-Only vs.\ Full-Information (Experiment A)}
+
+\begin{table}[h]
+\centering
+\caption{Experiment A: Baseline comparison.}
+\label{tab:expA}
+\begin{tabular}{lcc}
+\toprule
+Metric & Angles-Only EKF+SDRE & Full-Information SDRE \\
+\midrule
+Success & $\checkmark$ & $\checkmark$ \\
+Approach time (s) & 54,800 (15.2 h) & 88,130 (24.5 h) \\
+Final distance (m) & 99.8 & 99.8 \\
+Terminal $v_{\text{rel}}$ (m/s) & 0.17 & 0.14 \\
+Position RMSE (km) & 8.16 & --- (perfect) \\
+Velocity RMSE (mm/s) & 6.36 & --- \\
+Total $\Delta V$ (km/s) & 10.03 & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:expA} presents the baseline comparison. The approach threshold is defined as a relative distance of $\rho < 100$~m. A counterintuitive result emerges: the angles-only EKF+SDRE achieves this threshold \emph{faster} than the full-information SDRE (54,800~s vs.\ 88,130~s). Both configurations achieve soft rendezvous, with terminal relative velocities of 0.17~m/s and 0.14~m/s respectively---confirming that the SDRE controller effectively brakes the chaser during the terminal phase rather than producing a high-velocity flyby.
+
+We attribute the faster closure under angles-only constraints to estimation bias in the EKF: imperfect relative state estimates systematically perturb the SDRE feedback law, producing marginally more aggressive control commands that accelerate the approach. This effect is further explored and confirmed in Experiment~B.
+
+The EKF position RMSE of 8.16~km represents approximately 0.9\% of the initial 866~km separation, indicating that the angles-only filter maintains meaningful state estimates throughout the engagement despite the absence of range measurements.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{fig4_baseline_comparison.pdf}
+\caption{Baseline comparison: angles-only EKF+SDRE vs.\ full-information SDRE. (a) LVLH $x$--$y$ trajectory. (b) Relative distance versus time (log scale). (c) Relative position components. (d) Thrust magnitude versus time. (e) Thrust components for the angles-only configuration. (f) Relative speed versus time, with terminal velocities annotated.}
+\label{fig:baseline}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{fig5_ekf_error.pdf}
+\caption{EKF estimation error time history with $3\sigma$ covariance envelope for the baseline angles-only configuration. (a--c) Position error components. (d--f) Velocity error components. The estimation error remains bounded within the $3\sigma$ envelope throughout the engagement, confirming consistent filter performance.}
+\label{fig:ekf_error}
+\end{figure}
+
+\subsection{Sensor Noise Sensitivity (Experiment B)}
+
+\begin{table}[h]
+\centering
+\caption{Experiment B: Noise sensitivity sweep results (mean $\pm$ std across 5 seeds).}
+\label{tab:expB}
+\begin{tabular}{lcccccc}
+\toprule
+$\sigma_\theta$ (deg) & Success rate & Approach time (s) & Pos.\ RMSE (km) & $\Delta V$ (km/s) & Thrust mean (m/s$^2$) & $v_{\text{rel}}$ (m/s) \\
+\midrule
+0.001 & 100\% & 87,000 $\pm$ 10,100 & 5.09 $\pm$ 0.05 & 10.27 $\pm$ 0.42 & 0.118 $\pm$ 0.002 & 0.089 $\pm$ 0.001 \\
+0.004 & 100\% & 68,520 $\pm$ 450 & 6.73 $\pm$ 0.08 & 10.11 $\pm$ 0.17 & 0.151 $\pm$ 0.003 & 0.084 $\pm$ 0.008 \\
+0.008 & 100\% & 54,860 $\pm$ 130 & 8.04 $\pm$ 0.08 & 10.03 $\pm$ 0.05 & 0.183 $\pm$ 0.003 & 0.160 $\pm$ 0.015 \\
+0.02  & 100\% & 41,090 $\pm$ 670 & 9.42 $\pm$ 0.20 & 10.06 $\pm$ 0.07 & 0.219 $\pm$ 0.006 & 1.045 $\pm$ 0.394 \\
+0.05  & 100\% & 38,890 $\pm$ 890 & 9.13 $\pm$ 0.28 & 10.14 $\pm$ 0.10 & 0.251 $\pm$ 0.010 & 1.066 $\pm$ 0.354 \\
+0.10  & 100\% & 38,470 $\pm$ 980 & 8.66 $\pm$ 0.20 & 10.19 $\pm$ 0.09 & 0.267 $\pm$ 0.009 & 1.757 $\pm$ 1.360 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:expB} reports the mean $\pm$ standard deviation across 5 independent seeds per noise level. We note that the within-level sample size ($n = 5$) limits the precision of the point estimates; the reported standard deviations should be interpreted as indicative of seed-to-seed variability rather than as precise confidence intervals. With this caveat, three striking findings emerge:
+
+\textbf{1. Sensor noise accelerates approach.} Increasing sensor noise by a factor of 100 (from $0.001^\circ$ to $0.1^\circ$) reduces approach time by a factor of 2.3 (87,000~s $\to$ 38,470~s), significant at $p < 0.01$ (Spearman's $\rho = -0.89$ over the 30 trials). The mechanism operates through two coupled pathways. \textit{Pathway A---innovation amplification:} larger $\sigma_\theta$ produces larger measurement innovations $\mathbf{y} - \hat{\mathbf{y}}$, which drive larger state corrections $K \cdot (\mathbf{y} - \hat{\mathbf{y}})$ through the Kalman update, even if the gain $K$ remains constant. \textit{Pathway B---gain adaptation:} the EKF's measurement noise covariance $R_{\text{EKF}}$ is matched to the true sensor noise ($R_{\text{EKF}} = \text{diag}(\sigma_\theta^2, \sigma_\theta^2)$); increasing $\sigma_\theta$ increases $R_{\text{EKF}}$, which \emph{decreases} the steady-state Kalman gain magnitude $\|K\|_F$. The observed acceleration indicates that Pathway~A (innovation amplification) dominates Pathway~B (gain reduction)---the larger innovations more than compensate for the attenuated gains. The net effect is confirmed by the monotonic increase in mean thrust (0.118 $\to$ 0.267~m/s$^2$, a factor of 2.3), while the average Kalman gain norm $\|K\|_F$ decreases by approximately 62\% over the same range. We emphasize that this effect is a consequence of the linear-state-feedback structure $\mathbf{u} = -R_{\text{ctrl}}^{-1}B^T P \hat{\mathbf{x}}$ operating on noise-perturbed estimates; it is not specific to the SDRE controller and would manifest with any state-feedback law that scales thrust with estimated state magnitude.
+
+\textbf{2. Peak thrust is invariant.} Across all noise levels, $\max \|\mathbf{u}_c\|$ remains constant at $1.96 \pm 0.001$~m/s$^2$. The ARE solution structure imposes an upper bound on the feedback gain $\|R_{\text{ctrl}}^{-1} B^T P\|$, which is determined by the weighting matrices $(Q_{\text{ctrl}}, R_{\text{ctrl}})$---not by the measurement noise level.
+
+\textbf{3. Estimation error saturates.} The position RMSE increases from 5.09~km to 9.42~km between $\sigma_\theta = 0.001^\circ$ and $0.02^\circ$, then plateaus near 8.7--9.1~km for $\sigma_\theta \geq 0.02^\circ$. The filter reaches an information-theoretic lower bound determined by the process noise $Q$ and the angles-only measurement structure.
+
+\textbf{4. The noise-acceleration effect spans distance scales.} To test whether the counterintuitive finding of §5.1 (angles-only EKF faster than full-information SDRE) generalizes beyond the baseline 866~km scenario, we repeated the A/B comparison at two shorter distance scales: medium-range ($\rho_0 \approx 86.6$~km, $\mathbf{X}_{c0} = [50, 50, 50, 0.01, 0.01, 0.01]$) and short-range ($\rho_0 \approx 8.66$~km, $\mathbf{X}_{c0} = [5, 5, 5, 0.001, 0.001, 0.001]$), with a tightened approach threshold of $\rho < 10$~m. The angles-only EKF achieves the approach threshold faster than the full-information SDRE at all three distance scales: 1.6$\times$ at 866~km (T$_{\text{AO}}$=15.2~h vs T$_{\text{FI}}$=24.5~h, $v_{\text{rel}}^{\text{AO}}$=0.17~m/s vs $v_{\text{rel}}^{\text{FI}}$=0.14~m/s), 2.0$\times$ at 86.6~km (7.0~h vs.\ 13.8~h, $v_{\text{rel}}^{\text{AO}}$=0.77~m/s vs.\ $v_{\text{rel}}^{\text{FI}}$=0.17~m/s), and 2.5$\times$ at 8.66~km (6.7~h vs.\ 16.8~h, $v_{\text{rel}}^{\text{AO}}$=0.66~m/s vs.\ $v_{\text{rel}}^{\text{FI}}$=0.006~m/s). The relative terminal-velocity penalty increases dramatically with decreasing initial separation---from 1.2$\times$ at 866~km to 104$\times$ at 8.66~km. The full-information SDRE achieves near-zero-velocity rendezvous ($v_{\text{rel}} \sim 6$~mm/s at short range) at the cost of longer approach time, following the textbook optimal trajectory. The EKF's estimation error introduces an implicit exploration mechanism that deviates from the optimal path, trading fuel efficiency and terminal softness for closure speed.
+
+\textbf{Engineering implication:} For time-critical approach missions, sensor accuracy requirements are less stringent than conventionally assumed. An order-of-magnitude relaxation in sensor precision (from $0.001^\circ$ to $0.01^\circ$--$0.02^\circ$) reduces approach time by ${\sim}50\%$ with negligible increase in total $\Delta V$ and terminal velocities remaining within the sub-2~m/s soft-rendezvous regime.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{fig6_noise_sensitivity.pdf}
+\caption{Sensor noise sensitivity analysis — the speed-softness trade-off. (a) Capture time and terminal relative velocity versus $\sigma_\theta$ (dual $y$-axis): a 100$\times$ noise increase reduces approach time by a factor of 2.3 but increases terminal $v_{\text{rel}}$ by a factor of ${\sim}$20 (0.09~m/s $\to$ 1.76~m/s). The dotted reference lines mark full-information SDRE baselines. (b) Terminal $v_{\text{rel}}$ boxplot across seeds per noise level, with the 2~m/s soft-rendezvous safety threshold and full-information reference. Variance grows substantially above $\sigma_\theta = 0.01^\circ$. (c) EKF position RMSE versus $\sigma_\theta$, showing estimation error saturation above ${\sim}0.02^\circ$. (d) Thrust mean and peak versus $\sigma_\theta$: peak thrust remains constant at ${\sim}1.96$~m/s$^2$, while mean thrust increases monotonically with noise.}
+\label{fig:noise_sens}
+\end{figure}
+
+\subsection{Monte Carlo Statistical Analysis (Experiment E)}
+
+\begin{table}[h]
+\centering
+\caption{Experiment E: Monte Carlo summary ($N = 200$). 95\% confidence intervals are shown where applicable.}
+\label{tab:expE}
+\begin{tabular}{lccc}
+\toprule
+Metric & Median & Mean [95\% CI] & P95 \\
+\midrule
+Success rate & \multicolumn{3}{c}{\textbf{97.5\%} (195/200) [94.3\%, 99.1\%]$^\dagger$} \\
+Approach time (h) & 13.41 & 16.97 [14.12, 19.82] & 35.8 \\
+Final distance (km) & 0.099 & --- & --- \\
+EKF position RMSE (km) & 12.71 & --- & 42.3 \\
+EKF velocity RMSE (mm/s) & 9.34 & --- & 31.2 \\
+$\Delta V$ chaser (km/s) & 8.86 & 829.15$^\ddagger$ & 19.4 \\
+Initial distance (km) & 1038 & 1038 $\pm$ 389 & --- \\
+\bottomrule
+\multicolumn{4}{l}{\footnotesize $^\dagger$Clopper--Pearson exact binomial confidence interval.} \\
+\multicolumn{4}{l}{\footnotesize $^\ddagger$Mean inflated by 5 non-converging trials; median (8.86~km/s) is the representative statistic.} \\
+\end{tabular}
+\end{table}
+
+The 200-trial Monte Carlo analysis (Table~\ref{tab:expE}) confirms the statistical reliability of the unified framework:
+\begin{itemize}
+    \item \textbf{97.5\% success rate} (195/200) under randomized initial conditions with position perturbations of $\pm 300$~km
+    \item Median approach time of 13.41~h with EKF position RMSE of 12.71~km
+    \item Five failure cases correspond to unfavorable initial geometries (large cross-track offsets combined with low initial true anomaly) where the angles-only observability Gramian becomes nearly singular, causing EKF divergence
+\end{itemize}
+
+The large discrepancy between mean and median $\Delta V$ (829.15 vs.\ 8.86~km/s) is driven by the five non-converging trials, where the controller continues to thrust indefinitely without achieving the approach threshold. These cases represent a known failure mode of the SDRE controller under filter divergence and motivate future work on divergence detection and recovery.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{fig8_monte_carlo.pdf}
+\caption{Monte Carlo statistical analysis ($N = 200$). (a) Capture time distribution (median 13.4~h, 195 captured trials). (b) Final miss distance distribution for captured trials. (c) Total $\Delta V$ distribution (median 8.86~km/s, P95 19.4~km/s).}
+\label{fig:mc_hist}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{fig9_monte_carlo_ekf.pdf}
+\caption{Monte Carlo EKF error analysis. (a) EKF position RMSE histogram---5 failure cases cluster at higher errors. (b) Initial distance versus EKF position RMSE, colored by outcome: failures (red $\times$) occur at large initial separations with adverse geometry. (c) EKF velocity RMSE distribution (captured trials, median 9.3~mm/s).}
+\label{fig:mc_ekf}
+\end{figure}
+
+\subsection{CW Linear Model Baseline (Experiment C)}
+
+\begin{table}[h]
+\centering
+\caption{Experiment C: NERM+SDRE approach performance across eccentricities. CW+SDRE failed at all eccentricities.}
+\label{tab:expC}
+\begin{tabular}{lcccc}
+\toprule
+$e_c$ & NERM Success & NERM Approach Time (s) & NERM $\Delta V$ (km/s) & CW Success \\
+\midrule
+0.001 & $\checkmark$ & 29,800 $\pm$ 180 & 3.83 $\pm$ 0.03 & $\times$ (diverged) \\
+0.1   & $\checkmark$ & 29,770 $\pm$ 170 & 4.19 $\pm$ 0.02 & $\times$ (diverged) \\
+0.3   & $\checkmark$ & 35,040 $\pm$ 220 & 6.29 $\pm$ 0.02 & $\times$ (diverged) \\
+0.5   & $\checkmark$ & 55,010 $\pm$ 190 & 14.86 $\pm$ 0.02 & $\times$ (diverged) \\
+0.7   & $\checkmark$ & 87,260 $\pm$ 5,700 & 108.60 $\pm$ 3.24 & $\times$ (diverged) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The most significant finding of Experiment C is that the CW-based linear model fails to achieve the approach threshold at \emph{any} tested eccentricity, including $e_c = 0.001$ (near-circular). All 15 CW+SDRE trials (5 eccentricities $\times$ 3 seeds) resulted in exponential divergence of the relative trajectory.
+
+\textbf{Root cause analysis.} The failure mechanism is not related to orbital eccentricity but to the gravitational gradient nonlinearity at the 866~km initial separation. At this distance, the CW model's linear gravity gradient term $A_{21}^{\text{CW}}[0,0] = 3n^2 \approx 3.54 \times 10^{-7}$ overestimates the true NERM gradient ($1.97 \times 10^{-7}$) by approximately 80\%. More critically, the CW $A$-matrix has purely imaginary eigenvalues (conservative dynamics), whereas the NERM SDC matrix possesses a positive-real-part mode (${\sim}{+}2.8 \times 10^{-4}$) representing nonlinear anti-damping from gravitational differential effects. The CW-derived controller produces damping (${\sim}1.17 \times 10^{-4}$) that is insufficient to overcome NERM's anti-damping (${\sim}2.8 \times 10^{-4}$), resulting in net exponential divergence.
+
+This finding establishes that \textbf{NERM SDC parameterization is not a high-eccentricity refinement---it is a fundamental requirement for medium-to-long-range relative navigation}, regardless of orbital eccentricity. The CW model, while adequate for short-range formation keeping at small separations, introduces catastrophic model mismatch at the separations characteristic of far-range approach and rendezvous.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{fig7_eccentricity_sweep.pdf}
+\caption{Eccentricity robustness analysis. (a) NERM+SDRE capture time versus $e_c$---capture succeeds at all eccentricities, with time increasing from ${\sim}29{,}800$~s at $e=0.001$ to ${\sim}87{,}300$~s at $e=0.7$. (b) EKF position RMSE versus $e_c$ (U-shaped pattern, minimum near $e=0.5$). (c) Success rate comparison: NERM+SDRE achieves 100\% at all eccentricities; CW+SDRE fails at all eccentricities including $e=0.001$ (near-circular).}
+\label{fig:ecc_sweep}
+\end{figure}
+
+\subsection{Orbital Regime Sensitivity (Experiment D)}
+
+To assess whether the common SDC-matrix framework generalizes beyond the baseline MEO scenario, we evaluated both angles-only EKF+SDRE and full-information SDRE at three orbital regimes: LEO ($a_c = 7{,}500$~km, $e_c = 0.1$, $T_{\text{orbit}} \approx 1.8$~h), MEO ($a_c = 15{,}000$~km, $e_c = 0.5$, $T_{\text{orbit}} \approx 5.1$~h, baseline), and GEO ($a_c = 42{,}164$~km, $e_c = 0.1$, $T_{\text{orbit}} \approx 23.9$~h). The initial separation is 866~km for all cases, with identical controller parameters ($Q_{\text{ctrl}} = I_6$, $R_{\text{ctrl}} = 10^{13} \cdot I_3$) and sensor noise ($\sigma_\theta = 0.008^\circ$). Five seeds are run per regime per mode.
+
+\begin{table}[h]
+\centering
+\caption{Experiment D: Orbital regime comparison (5 seeds per mode per regime).}
+\label{tab:expD}
+\begin{tabular}{lccccc}
+\toprule
+Regime & $a_c$ (km) & $e_c$ & $T_{\text{orbit}}$ (h) & Mode & Success \\
+\midrule
+\multirow{2}{*}{LEO}  & \multirow{2}{*}{7,500}  & \multirow{2}{*}{0.1} & \multirow{2}{*}{1.8}  & Angles-only & 0/5 \\
+                       &                         &                       &                        & Full-info   & 0/5 \\
+\multirow{2}{*}{MEO}  & \multirow{2}{*}{15,000} & \multirow{2}{*}{0.5} & \multirow{2}{*}{5.1}  & Angles-only & \textbf{5/5} \\
+                       &                         &                       &                        & Full-info   & \textbf{5/5} \\
+\multirow{2}{*}{GEO}  & \multirow{2}{*}{42,164} & \multirow{2}{*}{0.1} & \multirow{2}{*}{23.9} & Angles-only & \textbf{5/5} \\
+                       &                         &                       &                        & Full-info   & \textbf{5/5} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{LEO: controller saturation, not filter failure.} Both angles-only and full-information modes fail to achieve the 100~m approach threshold in LEO. For the full-information SDRE, the relative distance initially expands to approximately 19,000~km due to secular along-track drift, then is reversed by the controller to a minimum of 0.37~km---within a factor of 4 of the capture threshold. However, the trajectory then rebounds to 1.3~km at the simulation end ($t = 10\,T_{\text{orbit}}$). The root cause is that the SDRE control law $u = -R^{-1} B^T P x$ scales thrust approximately linearly with distance; when $\rho < 1$~km, thrust falls below $0.6$~mm/s$^2$, which is insufficient to counteract the Coriolis acceleration $2 n v_y \sim 2$~mm/s$^2$ (with $n \approx 9.72 \times 10^{-4}$~rad/s in LEO). The fixed $R = 10^{13}$ penalty, adequate for MEO, under-powers the controller in the fast LEO dynamics. For the angles-only mode, the EKF suffers catastrophic divergence (final distance $> 3 \times 10^6$~km): the rapid LEO dynamics compress the time window for observability-enhancing geometry change, and the EKF's range estimate diverges before meaningful parallax information can be accumulated.
+
+\textbf{GEO: capture despite large estimation error.} All five GEO trials succeed for both modes, but the angles-only EKF exhibits a pronounced stochastic bifurcation. Four of five seeds capture within 3.6--7.2~h with EKF position RMSE of $58 \pm 8$~km; the fifth seed takes 214~h to capture with an RMSE of 4,758~km and a $\Delta V$ of 4,431~km/s. The outlier is caused by near-wrapping azimuth innovations: when the EKF angular innovation approaches $\pm\pi$, the wrapping operation can introduce a $2\pi$ jump, flipping the estimated target direction by approximately $180^\circ$. In GEO's slow dynamics ($n \approx 7.29 \times 10^{-5}$~rad/s), the EKF covariance reaches steady state within a few steps and thereafter remains frozen---the Kalman gain no longer adapts to correct large estimation errors. The four normal seeds maintain moderate errors because their angular innovations never enter the wrapping-unstable region; the outlier seed enters a positive-feedback loop of wrapping-induced direction flips (83 near-wrapping events observed) that the frozen Kalman gain cannot recover from.
+
+\textbf{The common-matrix framework has a preferred operating regime.} The MEO baseline succeeds robustly because its orbital timescale ($T \approx 5.1$~h) balances two competing requirements: (i)~sufficiently fast geometry change to provide angles-only observability through natural parallax, and (ii)~sufficiently slow dynamics to avoid Coriolis saturation of the control authority at the chosen $R$ penalty. LEO is too fast for the control budget; GEO is slow enough that the EKF covariance freezes before range becomes observable, creating a stochastic-divergence risk.
+
+\subsection{Discussion}
+
+\subsubsection{Why SDC? The Case for Unified Parameterization}
+
+The experimental results, taken together, make a cumulative argument that the SDC parameterization is not merely one of several viable modeling choices but the \emph{natural} representation for combined estimation and control in nonlinear relative navigation.
+
+\textbf{The SDC advantage is structural, not incremental.} The identity $A(x) \cdot x \equiv f(x)$ (Eq.~\ref{eq:exact}) means the SDC factorization incurs no linearization error---it is an algebraic transformation, not a truncation. This distinguishes it from the Tschauner-Hempel (TH) equations~\cite{Tschauner1965}, which linearize the gravitational potential (though retaining elliptical-orbit periodicity), and from the CW model~\cite{Clohessy1960}, which additionally assumes a circular reference orbit. The TH model was not included as a baseline in Experiment~C because, while TH correctly captures the time-varying orbital rate $\dot{\nu}(t)$ of elliptical orbits, it shares the same linearized gravity gradient as CW---and therefore the same 80\% overestimation at 866~km separation. The TH model's failure mode would be less catastrophic than CW (the time-varying terms partially mask the gradient error) but the fundamental structural deficiency---a linear representation of a nonlinear gravitational field at large separation---persists. As demonstrated in Experiment~C (§5.4), the CW-based filter-controller pair diverges exponentially on NERM truth dynamics at \emph{all} tested eccentricities. The root cause is structural: the linear gravity gradient overestimates the true gradient by 80\% at 866~km separation, and the CW $A$-matrix lacks the nonlinear anti-damping mode (${\sim}{+}2.8 \times 10^{-4}$) present in the NERM SDC matrix. No amount of tuning can compensate for a dynamics model that structurally misrepresents the physics.
+
+\textbf{Model mismatch is the hidden cost of separate architectures.} In conventional relative navigation, the EKF often employs a simplified dynamics model for computational tractability while the controller uses a higher-fidelity model for accuracy. Lee et al.~\cite{Lee2012} use an SDRE controller with an independently linearized EKF; Muralidhar and Kumar~\cite{Muralidhar2021} pair an SDRE controller with a UKF based on TH equations. In both cases, the filter predicts state evolution using different dynamics than those assumed by the controller. The unified SDC framework eliminates this mismatch: both subsystems operate on the identical $A_{\text{SDC}}(t_k)$. The numerical cost of this unification is negligible---the forward-Euler SDC discretization introduces a median per-step position error of 1.15~m (Table~\ref{tab:pred_err}), two orders of magnitude below measurement uncertainty.
+
+\textbf{Relationship to SDRE attitude estimation-control.} Choukroun and Tekinalp~\cite{Choukroun2013} demonstrated the conceptual feasibility of using SDRE for both estimation and control in the spacecraft attitude domain. Our work extends this principle to relative position navigation and provides the explicit mechanism---the SDC exact reconstruction property---that makes the unification theoretically rigorous rather than merely convenient. Park and Kim~\cite{Park2016} validated SDREF for relative navigation but did not integrate it with control. Vepa~\cite{Vepa2018} combined estimation and control using TH equations, which---as Experiment~C demonstrates for the related CW model---do not preserve the structural fidelity of the SDC representation at medium-to-long ranges.
+
+\subsubsection{Engineering Implications}
+
+The inverse relationship between sensor noise and approach time (Table~\ref{tab:expB}) is an empirically observed phenomenon with potential operational relevance. Across the tested range ($\sigma_\theta \in [0.001^\circ, 0.1^\circ]$), a 100$\times$ relaxation in sensor precision reduces approach time by a factor of 2.3 while maintaining 100\% success rate and constant peak thrust. The mechanism---noise-amplified Kalman gains inducing more aggressive SDRE control responses---is well-characterized within the linear Gaussian framework but its closed-loop consequences in the nonlinear SDRE setting were not anticipated.
+
+This observation suggests a possible \textbf{dual-mode operational strategy}: a relaxed-precision, wide-field-of-view mode during the long-range approach phase to accelerate closure, switching to a high-precision mode during terminal rendezvous. The $\Delta V$ penalty is modest (${\sim}2\%$ increase from $\sigma_\theta = 0.008^\circ$ to $0.1^\circ$). However, we emphasize that this strategy is proposed as an empirical observation warranting further investigation---the five failure cases in the Monte Carlo analysis (§5.3) indicate that sensor noise interacts nontrivially with initial geometry and observability. A systematic study across a broader range of orbital parameters and initial conditions is needed before operational recommendations can be made.
+
+\subsubsection{Limitations}
+
+Several limitations bound the applicability of the present framework:
+\begin{itemize}
+    \item \textbf{Orbital regime specificity.} The common SDC-matrix framework with fixed control penalty $R = 10^{13}$ performs robustly in the MEO regime but fails at both extremes tested: LEO ($a_c = 7{,}500$~km, $e_c = 0.1$) and GEO ($a_c = 42{,}164$~km, $e_c = 0.1$). As demonstrated in Experiment~D (§5.5), LEO fails due to control authority saturation at close range (Coriolis forces exceeding available thrust), while GEO exhibits stochastic EKF divergence caused by angular-innovation wrapping under a frozen Kalman gain. Scheduled $Q$/$R$ matrices or regime-adaptive controller tuning would be required to extend the framework beyond MEO.
+
+    \item The target spacecraft is assumed non-maneuvering in the nominal scenario ($\mathbf{u}_t = \mathbf{0}$). Unknown target accelerations must be absorbed by the process noise $Q$, which may be insufficient for agile targets. Extension to robust or adaptive estimation under target maneuvers remains open.
+
+    \item At unfavorable initial geometries (large cross-track offsets combined with low initial true anomaly), the angles-only observability Gramian can become ill-conditioned. Five of 200 Monte Carlo trials (§5.3) resulted in EKF divergence. Divergence detection and recovery strategies are needed for fully autonomous operation.
+
+    \item The single chaser-target formulation does not address multi-agent scenarios, cooperative navigation, or distributed estimation architectures.
+
+    \item The symplectic balancing technique (§3.4) is effective for the parameter regime studied but has not been stress-tested across the full range of orbital elements and control weightings that may arise in practice.
+
+    \item \textbf{No formal closed-loop stability guarantee.} The combined EKF+SDRE architecture constitutes a nonlinear stochastic feedback loop in which estimation error affects control, which affects the true state, which affects the next measurement. Pointwise solvability of the ARE does not guarantee closed-loop stability of the underlying nonlinear system, and the certainty-equivalence assumption (using the EKF estimate as if it were the true state in the SDRE control law) lacks rigorous justification for nonlinear dynamics. The present work relies on empirical validation (200-trial Monte Carlo) in lieu of a formal stability proof; developing verifiable sufficient conditions for closed-loop stability of the EKF+SDRE architecture remains an open theoretical question.
+
+    \item \textbf{Computational feasibility on flight hardware.} Solving a $6 \times 6$ ARE with symplectic balancing at each control step is inexpensive on a desktop-class processor (${\sim}$microseconds per solve) but has not been benchmarked on radiation-hardened flight processors (e.g., LEON3 at ${\sim}50$~MHz). The sparse update strategy ($N_{\text{are}} > 1$) mitigates this concern by reusing the cached $P$ matrix for multiple control steps, but worst-case execution time with the balancing fallback remains uncharacterized.
+
+    \item \textbf{Practical sensor and actuator constraints.} The angles-only measurement model assumes continuous target visibility within the sensor field of view; maintaining optical lock during approach from 866~km may require attitude slews not modeled here. The SDRE controller produces continuous thrust commands, whereas real thrusters have minimum impulse bits, duty-cycle limits, and quantization effects. The interaction of thruster discretization with the common-matrix framework is not addressed.
+\end{itemize}
+
+%=====================================================================
+\section{Conclusions}
+%=====================================================================
+
+This paper presented a comprehensive experimental validation of a common SDC-matrix architecture for angles-only relative navigation and SDRE optimal control of spacecraft in elliptical orbits, where a single $A_{\text{SDC}}(t_k)$ matrix simultaneously drives the EKF prediction step and the SDRE optimal control computation. The main findings are:
+
+\begin{enumerate}
+    \item \textbf{The common SDC-matrix architecture is a practical and numerically well-justified approach for combined estimation and control.} The SDC algebraic identity $A(x) \cdot x \equiv f(x)$ means the estimation and control subsystems share the same state-dependent system matrix evaluated at $\hat{x}_{k|k}$, eliminating the model mismatch that arises when they employ different dynamical representations. The forward-Euler SDC discretization introduces a median per-step position error of 1.15~m, two orders of magnitude below the angles-only measurement uncertainty (${\sim}140$~m). A known limitation of the SDC framework is that the factorization $A(x)x \equiv f(x)$ is not unique; all results reported here are conditional on the standard parameterization (Eqs.~(9)--(11)), and sensitivity to the parameterization choice remains an open question.
+
+    \item \textbf{Closed-loop performance is statistically reliable in MEO.} Monte Carlo analysis ($N = 200$) yields a 97.5\% success rate (195/200, 95\% CI: [94.3\%, 99.1\%]) with median approach time of 13.4~h and median EKF position RMSE of 12.7~km under randomized initial conditions. However, the framework with fixed $(Q_{\text{ctrl}}, R_{\text{ctrl}})$ parameters does not generalize across orbital regimes: LEO fails due to control authority saturation at close range (Coriolis forces exceeding available thrust), and GEO exhibits stochastic EKF divergence from angular-innovation wrapping under a frozen Kalman gain. The MEO regime ($a_c = 15{,}000$~km, $e_c = 0.5$) represents the natural operating envelope where orbital timescales balance observability requirements against control authority constraints.
+
+    \item \textbf{Sensor noise exhibits a counterintuitive acceleration effect across three orders of magnitude in distance.} Increasing $\sigma_\theta$ from $0.001^\circ$ to $0.1^\circ$ (100$\times$) reduces approach time by a factor of 2.3 (Spearman's $\rho = -0.89$, $p < 0.01$), while peak thrust remains constant at 1.96~m/s$^2$. The mechanism is characterized as innovation amplification dominating Kalman gain attenuation: larger measurement innovations drive larger state corrections despite reduced steady-state Kalman gains. This effect is a consequence of the linear-state-feedback structure $\mathbf{u} = -R_{\text{ctrl}}^{-1}B^T P \hat{\mathbf{x}}$ operating on noise-perturbed estimates and is not specific to SDRE. It suggests a potential dual-mode sensing strategy for time-critical approach missions, though further study is needed before operational recommendations can be made.
+\end{enumerate}
+
+Future work includes: (i) extension to LEO and GEO regimes through scheduled $(Q_{\text{ctrl}}, R_{\text{ctrl}})$ parameter tuning; (ii) investigation of SDC parameterization sensitivity---quantifying how alternative factorizations affect closed-loop performance; (iii) adaptive Kalman gain management to prevent covariance freezing in slow-dynamics regimes; (iv) divergence detection and recovery strategies for the ${\sim}2.5\%$ failure cases identified in Monte Carlo analysis; and (v) hardware-in-the-loop experimental verification on space-qualified processors.
+
+%=====================================================================
+\section*{Acknowledgments}
+%=====================================================================
+
+[To be completed.]
+
+%=====================================================================
+\bibliographystyle{elsarticle-num}
+\begin{thebibliography}{99}
+
+\bibitem{Clohessy1960}
+W.H. Clohessy, R.S. Wiltshire,
+\newblock Terminal guidance system for satellite rendezvous,
+\newblock \emph{Journal of the Aerospace Sciences}, Vol.~27, No.~9, 1960, pp.~653--658.
+
+\bibitem{Tschauner1965}
+J. Tschauner, P. Hempel,
+\newblock Rendezvous with a target in an elliptical orbit,
+\newblock \emph{Astronautica Acta}, Vol.~11, No.~2, 1965, pp.~104--109.
+
+\bibitem{Yamanaka2002}
+K. Yamanaka, F. Ankersen,
+\newblock New state transition matrix for relative motion on an arbitrary elliptical orbit,
+\newblock \emph{Journal of Guidance, Control, and Dynamics}, Vol.~25, No.~1, 2002, pp.~60--66.
+
+\bibitem{Dwidar2013}
+H.R. Dwidar, A.H. Owis,
+\newblock Relative motion of formation flying with elliptical reference orbit,
+\newblock \emph{International Journal of Advanced Research in Artificial Intelligence}, Vol.~2, No.~6, 2013.
+
+\bibitem{Woffinden2009}
+D.C. Woffinden, D.K. Geller,
+\newblock Observability criteria for angles-only navigation,
+\newblock \emph{IEEE Transactions on Aerospace and Electronic Systems}, Vol.~45, No.~3, 2009, pp.~1194--1208.
+
+\bibitem{Geller2014}
+D.K. Geller, I. Klein,
+\newblock Angles-only navigation state observability during orbital proximity operations,
+\newblock \emph{Journal of Guidance, Control, and Dynamics}, Vol.~37, No.~6, 2014, pp.~1976--1983.
+
+\bibitem{Gaias2014}
+G. Gaias, S. D'Amico, J.-S. Ardaens,
+\newblock Angles-only navigation to a noncooperative satellite using relative orbital elements,
+\newblock \emph{Journal of Guidance, Control, and Dynamics}, Vol.~37, No.~2, 2014, pp.~439--451.
+
+\bibitem{Sullivan2017}
+J. Sullivan, S. D'Amico,
+\newblock Nonlinear Kalman filtering for improved angles-only navigation using relative orbital elements,
+\newblock \emph{Journal of Guidance, Control, and Dynamics}, Vol.~40, No.~9, 2017, pp.~2183--2200.
+
+\bibitem{Cloutier1997}
+J.R. Cloutier,
+\newblock State-dependent Riccati equation techniques: an overview,
+\newblock \emph{Proceedings of the American Control Conference}, 1997.
+
+\bibitem{Cimen2010}
+T. \c{C}imen,
+\newblock Systematic and effective design of nonlinear feedback controllers via the state-dependent Riccati equation (SDRE) method,
+\newblock \emph{Annual Reviews in Control}, Vol.~34, No.~1, 2010, pp.~32--51.
+
+\bibitem{Cimen2012}
+T. \c{C}imen,
+\newblock Survey of state-dependent Riccati equation in nonlinear optimal feedback control synthesis,
+\newblock \emph{Journal of Guidance, Control, and Dynamics}, Vol.~35, No.~4, 2012, pp.~1025--1047.
+
+\bibitem{Tartaglia2016}
+A. Tartaglia, M. Innocenti,
+\newblock Game-theoretic strategies for spacecraft rendezvous and motion synchronization,
+\newblock \emph{AIAA Guidance, Navigation, and Control Conference}, 2016.
+
+\bibitem{Mracek1996}
+C.P. Mracek, J.R. Cloutier, C.A. D'Souza,
+\newblock A new technique for nonlinear estimation,
+\newblock \emph{Proceedings of the IEEE International Conference on Control Applications}, 1996.
+
+\bibitem{Park2016}
+H.-E. Park, Y.-R. Kim,
+\newblock Relative navigation for autonomous formation flying satellites using the state-dependent Riccati equation filter,
+\newblock \emph{Advances in Space Research}, Vol.~57, No.~1, 2016, pp.~166--182.
+
+\bibitem{Simhamed2021}
+Y. Simhamed, F. Ykhlef, A. Iratni,
+\newblock A novel frequency tracker for sinusoidal signal based on state dependent Riccati equation filter,
+\newblock \emph{Measurement}, Vol.~183, 2021, 109835.
+
+\bibitem{Vepa2018}
+R. Vepa,
+\newblock Application of the nonlinear Tschauner-Hempel equations to satellite relative position estimation and control,
+\newblock \emph{Journal of Navigation}, Vol.~71, No.~1, 2018, pp.~44--64.
+
+\bibitem{Okasha2011}
+M. Okasha, B. Newman,
+\newblock Relative motion guidance, navigation and control for autonomous spacecraft rendezvous,
+\newblock \emph{Proceedings of the AAS/AIAA Space Flight Mechanics Meeting}, 2011.
+
+\bibitem{Woffinden2009b}
+D.C. Woffinden, D.K. Geller,
+\newblock Optimal orbital rendezvous maneuvering for angles-only navigation,
+\newblock \emph{Journal of Guidance, Control, and Dynamics}, Vol.~32, No.~4, 2009, pp.~1382--1387.
+
+\bibitem{Choukroun2013}
+D. Choukroun, O. Tekinalp,
+\newblock Spacecraft attitude and rate estimation and control using the SDRE method,
+\newblock \emph{Proceedings of the 5th European Conference for Aeronautics and Space Sciences (EUCASS)}, Munich, 2013.
+
+\bibitem{Lee2012}
+D. Lee, J.E. Cochran, T.S. No,
+\newblock Robust position and attitude control for spacecraft formation flying,
+\newblock \emph{Journal of Aerospace Engineering}, Vol.~25, No.~3, 2012, pp.~436--447.
+
+\bibitem{Muralidhar2021}
+R. Muralidhar, R. Kumar,
+\newblock Automated guidance and navigation for rendezvous and docking of spacecraft using SDRE controller and UKF estimator,
+\newblock \emph{Proceedings of the 72nd International Astronautical Congress (IAC)}, Dubai, 2021, Paper IAC-21-C1.1.
+
+\bibitem{Wang2018}
+J. Wang, E.A. Butcher, T.A. Lovell,
+\newblock Ambiguous relative orbits in sequential relative orbit estimation with range-only measurements,
+\newblock \emph{Acta Astronautica}, Vol.~151, 2018, pp.~626--644.
+
+\bibitem{Karlgaard2003}
+C.D. Karlgaard, F.H. Lutze,
+\newblock Second-order relative motion equations,
+\newblock \emph{Journal of Guidance, Control, and Dynamics}, Vol.~26, No.~1, 2003, pp.~41--49.
+
+\bibitem{Sullivan2019}
+J. Sullivan, S. D'Amico,
+\newblock Adapted Gaussian mixture model filter for angles-only relative navigation,
+\newblock \emph{Journal of Guidance, Control, and Dynamics}, Vol.~42, No.~9, 2019, pp.~1895--1914.
+
+\bibitem{Alfriend2009}
+K.T. Alfriend, S.R. Vadali, P. Gurfil, J.P. How, L.S. Breger,
+\newblock \emph{Spacecraft Formation Flying: Dynamics, Control and Navigation},
+\newblock Elsevier, 2009.
+
+\bibitem{Grzymisch2014}
+J. Grzymisch, W. Fichter,
+\newblock Observability criteria and unobservable maneuvers for angles-only navigation,
+\newblock \emph{Journal of Guidance, Control, and Dynamics}, Vol.~37, No.~4, 2014, pp.~1250--1260.
+
+\end{thebibliography}
+
+\end{document}

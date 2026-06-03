@@ -17,11 +17,12 @@ Agent instructions for this repository.
 
 ## Run Commands
 
-- Use Python 3.12+ (see [pyproject.toml](pyproject.toml)).
+- Use Python 3.12+ with `uv run python` (see [pyproject.toml](pyproject.toml)).
 - Run main entry points:
-  - `python main.py`
-  - `python3.12 main.py`
-  - `python main_nerm_sdre.py`
+  - `uv run python main.py`
+  - `uv run python main_nerm_sdre.py`
+  - `uv run python run_scenarios.py`
+- See [CLAUDE.md](CLAUDE.md) for the full list of experiment commands.
 
 ## High-Value File Map
 
@@ -31,27 +32,31 @@ Agent instructions for this repository.
   - [aerospace/dynamics/nerm.py](aerospace/dynamics/nerm.py): nonlinear elliptical model (13D closed-loop state with true anomaly).
   - [aerospace/dynamics/nerm_2d.py](aerospace/dynamics/nerm_2d.py): 2D in-plane simplification (9D closed-loop state).
 - Control methods:
-  - [aerospace/control/lqdg.py](aerospace/control/lqdg.py)
-  - [aerospace/control/sdre.py](aerospace/control/sdre.py)
-  - [aerospace/control/sdre_2d.py](aerospace/control/sdre_2d.py)
-  - [aerospace/control/neural.py](aerospace/control/neural.py)
-  - [aerospace/control/neural_2d.py](aerospace/control/neural_2d.py)
+  - [aerospace/control/sdre.py](aerospace/control/sdre.py): 3D SDRE game-theoretic controller (primary).
+  - [aerospace/control/sdre_2d.py](aerospace/control/sdre_2d.py): 2D SDRE variant.
+  - [aerospace/control/tpbvp_collocation.py](aerospace/control/tpbvp_collocation.py): CasADi+IPOPT TPBVP solver (ground-truth optimal).
+  - [aerospace/control/optimal_control_solver.py](aerospace/control/optimal_control_solver.py): CasADi 2D time-energy optimal control.
+  - [aerospace/control/inverse_optimal_fit.py](aerospace/control/inverse_optimal_fit.py): recover R(x) from optimal trajectories.
+  - [aerospace/control/lqdg.py](aerospace/control/lqdg.py): LQDG for CW systems.
+  - [aerospace/control/neural.py](aerospace/control/neural.py): neural SDRE surrogate (note: imports from removed pinn module).
+- State estimation:
+  - [aerospace/estimation/ekf.py](aerospace/estimation/ekf.py): 3D EKF with angles-only support.
+  - [aerospace/estimation/ekf_2d.py](aerospace/estimation/ekf_2d.py): 2D in-plane EKF.
 - Reusable simulation engines:
-  - [aerospace/simulation/nerm_ekf_sdre.py](aerospace/simulation/nerm_ekf_sdre.py)
-  - [aerospace/simulation/nerm_sdre.py](aerospace/simulation/nerm_sdre.py)
-- Experiment and training entry examples:
-  - [aerospace/experiments/control_comparison_3d.py](aerospace/experiments/control_comparison_3d.py)
-  - [aerospace/experiments/train_pinn_lc1.py](aerospace/experiments/train_pinn_lc1.py)
-  - [aerospace/pinn/pinn_trainer.py](aerospace/pinn/pinn_trainer.py)
+  - [aerospace/simulation/nerm_ekf_sdre.py](aerospace/simulation/nerm_ekf_sdre.py): main EKF+SDRE closed-loop engine.
+  - [aerospace/simulation/nerm_sdre.py](aerospace/simulation/nerm_sdre.py): ideal state-feedback engine.
+- Key experiment files:
+  - [aerospace/experiments/monte_carlo.py](aerospace/experiments/monte_carlo.py)
+  - [aerospace/experiments/compare_tpbvp_vs_sdre.py](aerospace/experiments/compare_tpbvp_vs_sdre.py)
+  - [aerospace/experiments/altitude_sweep.py](aerospace/experiments/altitude_sweep.py)
+  - [aerospace/experiments/eccentricity_sweep.py](aerospace/experiments/eccentricity_sweep.py)
 
 ## Known Pitfalls (Check Before Debugging)
 
-- Import path mismatch is documented in [CLAUDE.md](CLAUDE.md):
-  - [aerospace/dynamics/lerm.py](aerospace/dynamics/lerm.py)
-  - [aerospace/control/neural.py](aerospace/control/neural.py)
-  - [aerospace/control/neural_2d.py](aerospace/control/neural_2d.py)
 - [README.md](README.md) is currently empty; prefer [CLAUDE.md](CLAUDE.md) for technical context.
-- [main.py](main.py) is an active entry script and imports the simulation engine from [aerospace/simulation/nerm_ekf_sdre.py](aerospace/simulation/nerm_ekf_sdre.py).
+- [main.py](main.py) is the active entry script and imports the simulation engine from [aerospace/simulation/nerm_ekf_sdre.py](aerospace/simulation/nerm_ekf_sdre.py).
+- `aerospace/control/neural.py` and `neural_2d.py` import from `aerospace.pinn.*` which no longer exists — they are effectively dead code.
+- Use `uv run python` not bare `python` — the system Python may be 3.8.
 
 ## Coding Conventions In This Repo
 

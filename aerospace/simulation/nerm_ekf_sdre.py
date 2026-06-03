@@ -66,7 +66,8 @@ class EKFSDRESimulation:
                  nu0: float = 0.0, dt: float = 10.0,
                  are_interval: int = 1,
                  capture_dist: float = 0.1,
-                 rng: np.random.Generator | None = None):
+                 rng: np.random.Generator | None = None,
+                 A_fixed: np.ndarray | None = None):
         self.dynamics = dynamics
         self.controller = controller
         self.ekf = ekf
@@ -74,6 +75,7 @@ class EKFSDRESimulation:
         self.are_interval = are_interval
         self.capture_dist = capture_dist
         self.rng = rng
+        self.A_fixed = A_fixed
 
         self.state0 = np.zeros(13)
         self.state0[0:6] = X_p0
@@ -145,9 +147,12 @@ class EKFSDRESimulation:
                 x_ctrl = self.ekf.x
             else:
                 x_ctrl = state[0:6] - state[6:12]
-            # 从追方真实位置和相对估计推算逃方估计位置
-            X_e_est = X_p_true - x_ctrl
-            A_SDC = self.dynamics.get_SDC_matrix(X_p_true, X_e_est, r_c, nu_dot, nu_ddot)
+            if self.A_fixed is not None:
+                A_SDC = self.A_fixed
+            else:
+                # 从追方真实位置和相对估计推算逃方估计位置
+                X_e_est = X_p_true - x_ctrl
+                A_SDC = self.dynamics.get_SDC_matrix(X_p_true, X_e_est, r_c, nu_dot, nu_ddot)
 
             solve_now = (k % self.are_interval == 0)
             x_true_rel = state[0:6] - state[6:12]
@@ -168,15 +173,9 @@ class EKFSDRESimulation:
             # ── EKF 预测 & 更新（仅有噪声时运行）────────────────────────────
             innov = None
             if self.rng is not None:
-                nu_new = state[12]
-                r_c2, nu_dot2, nu_ddot2 = self.dynamics.get_orbital_params(nu_new)
-                # 用追方真实位置和EKF估计的相对状态推算逃方估计位置
-                X_p_new = state[0:6]
-                X_e_est_new = X_p_new - self.ekf.x
-                A_ekf = self.dynamics.get_SDC_matrix(
-                    X_p_new, X_e_est_new, r_c2, nu_dot2, nu_ddot2
-                )
-                x_priori, P_priori = self.ekf.predict(A_ekf, self._B_ctrl, u_p, u_e, self.dt)
+                # EKF 预测复用控制步骤的 A_SDC(t_k)——SDC 框架下
+                # 滤波与控制共享同一线性化点 x̂_{k|k}，无需重算。
+                x_priori, P_priori = self.ekf.predict(A_SDC, self._B_ctrl, u_p, u_e, self.dt)
 
                 _angle_only = (self.ekf.R.shape[0] == 2)
                 z_true = RelativeStateEKF.measure(state[0:6], state[6:12], angle_only=_angle_only)
