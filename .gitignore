@@ -8,7 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
-*.png
 
 # 无关文件
 node_modules/
