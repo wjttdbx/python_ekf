@@ -9,7 +9,10 @@ NERM + EKF + SDRE 仿真结果可视化
 
 import numpy as np
 import matplotlib
-matplotlib.use("Agg")
+import os
+
+if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+    matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 
@@ -129,7 +132,8 @@ def plot_relative_motion(result: EKFSDRESimResult, title: str, out_path: str) ->
         ax.grid(True, alpha=0.4)
 
     plt.savefig(out_path, dpi=150, bbox_inches="tight")
-    plt.close()
+    #plt.close()
+    plt.show()
     print(f"图像已保存至 {out_path}")
 
 
@@ -171,7 +175,8 @@ def plot_control_history(result: EKFSDRESimResult, title: str, out_path: str) ->
 
     plt.tight_layout()
     plt.savefig(out_path, dpi=150, bbox_inches="tight")
-    plt.close()
+    #plt.close()
+    plt.show()
     print(f"图像已保存至 {out_path}")
 
 
@@ -255,7 +260,8 @@ def plot_ekf_performance(result: EKFSDRESimResult, title: str, out_path: str) ->
         ax.grid(True, alpha=0.4)
 
     plt.savefig(out_path, dpi=150, bbox_inches="tight")
-    plt.close()
+    #plt.close()
+    plt.show()
     print(f"图像已保存至 {out_path}")
 
 
@@ -294,6 +300,7 @@ def plot_comparison(result_noisy: EKFSDRESimResult, result_clean: EKFSDRESimResu
 
     plt.tight_layout()
     plt.savefig(out_path, dpi=150, bbox_inches="tight")
-    plt.close()
+    #plt.close()
+    plt.show()
     print(f"对比图已保存至 {out_path}")
 
