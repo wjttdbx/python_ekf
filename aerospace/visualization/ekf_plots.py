@@ -9,7 +9,7 @@ NERM + EKF + SDRE 仿真结果可视化
 
 import numpy as np
 import matplotlib
-matplotlib.use("Agg")
+# matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 
