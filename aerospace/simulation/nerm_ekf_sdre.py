@@ -177,9 +177,13 @@ class EKFSDRESimulation:
                 # 滤波与控制共享同一线性化点 x̂_{k|k}，无需重算。
                 x_priori, P_priori = self.ekf.predict(A_SDC, self._B_ctrl, u_p, u_e, self.dt)
 
-                _angle_only = (self.ekf.R.shape[0] == 2)
-                z_true = RelativeStateEKF.measure(state[0:6], state[6:12], angle_only=_angle_only)
-                z_meas = z_true + self.rng.multivariate_normal(np.zeros(self.ekf.R.shape[0]), self.ekf.R)
+                _angle_only = self.ekf.angles_only
+                _use_doppler = self.ekf.use_doppler
+                z_true = RelativeStateEKF.measure(state[0:6], state[6:12],
+                                                  angle_only=_angle_only,
+                                                  use_doppler=_use_doppler)
+                z_meas = z_true + self.rng.multivariate_normal(
+                    np.zeros(self.ekf.R.shape[0]), self.ekf.R)
                 innov = self.ekf.update(x_priori, P_priori, z_meas)
             else:
                 self.ekf.x = state[0:6] - state[6:12]

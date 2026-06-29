@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.11.7)  2 JUN 2026 18:37
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.11.7)  19 JUN 2026 19:36
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -845,6 +845,10 @@ File: utxsyc.fd 2000/12/15 v3.1
 {/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/loc
 al/texlive/2025/texmf-dist/fonts/enc/dvips/base/8r.enc}]
 
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+
+
 [2]
 Overfull \hbox (9.68396pt too wide) in paragraph at lines 90--91
 []\T1/txr/bx/n/10 Comprehensive closed-loop val-i-da-tion of the com-mon SDC-ma
@@ -868,10 +872,10 @@ OML/txmi/m/it/10 S\OMS/txsy/m/n/10 k ^^Y
 
 
 [3]
-<./figures/fig1_lvlh_frame.pdf, id=255, 356.2928pt x 331.71867pt>
+<./figures/fig1_lvlh_frame.pdf, id=251, 356.2928pt x 331.71867pt>
 File: ./figures/fig1_lvlh_frame.pdf Graphic file (type pdf)
 <use ./figures/fig1_lvlh_frame.pdf>
-Package pdftex.def Info: ./figures/fig1_lvlh_frame.pdf  used on input line 137.
+Package pdftex.def Info: ./figures/fig1_lvlh_frame.pdf  used on input line 139.
 
 (pdftex.def)             Requested size: 365.03943pt x 339.8721pt.
 
@@ -879,11 +883,13 @@ Package pdftex.def Info: ./figures/fig1_lvlh_frame.pdf  used on input line 137.
 [4]
 
 [5 <./figures/fig1_lvlh_frame.pdf>]
-<./figures/fig2_flow_diagram.pdf, id=367, 534.19576pt x 368.21565pt>
+
+[6]
+<./figures/fig2_flow_diagram.pdf, id=379, 534.19576pt x 368.21565pt>
 File: ./figures/fig2_flow_diagram.pdf Graphic file (type pdf)
 <use ./figures/fig2_flow_diagram.pdf>
-Package pdftex.def Info: ./figures/fig2_flow_diagram.pdf  used on input line 23
-9.
+Package pdftex.def Info: ./figures/fig2_flow_diagram.pdf  used on input line 24
+1.
 (pdftex.def)             Requested size: 444.59857pt x 306.45607pt.
 
 
@@ -891,24 +897,32 @@ LaTeX Warning: `h' float specifier changed to `ht'.
 
 
 
-[6]
-<./figures/fig3_prediction_error.pdf, id=378, 877.13322pt x 260.41841pt>
+[7 <./figures/fig2_flow_diagram.pdf>]
+<./figures/fig3_prediction_error.pdf, id=532, 877.13322pt x 260.41841pt>
 File: ./figures/fig3_prediction_error.pdf Graphic file (type pdf)
 <use ./figures/fig3_prediction_error.pdf>
 Package pdftex.def Info: ./figures/fig3_prediction_error.pdf  used on input lin
-e 266.
+e 270.
 (pdftex.def)             Requested size: 444.59857pt x 131.99702pt.
 
 
-[7 <./figures/fig2_flow_diagram.pdf>]
-
 [8 <./figures/fig3_prediction_error.pdf>]
 Package hyperref Info: bookmark level for unknown algorithm defaults to 0 on in
-put line 323.
+put line 327.
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
 
 
 [9]
-Overfull \hbox (26.41216pt too wide) in paragraph at lines 410--411
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+
+
+[10]
+Overfull \hbox (26.41216pt too wide) in paragraph at lines 416--417
 \T1/txr/m/n/10 tion and SDRE con-trol, both op-er-at-ing on NERM 13-DOF truth d
 y-nam-ics. Ec-cen-tric-i-ties $\OML/txmi/m/it/10 e[] \OMS/txsy/m/n/10 2 f\OT1/t
 xr/m/n/10 0\OML/txmi/m/it/10 :\OT1/txr/m/n/10 001\OML/txmi/m/it/10 ; \OT1/txr/m
@@ -920,83 +934,72 @@ txmi/m/it/10 :\OT1/txr/m/n/10 5\OML/txmi/m/it/10 ; \OT1/txr/m/n/10 0\OML/txmi/m
 
 
 
-[10]
-<./figures/fig4_baseline_comparison.pdf, id=640, 850.66771pt x 544.46472pt>
+[11]
+<./figures/fig4_baseline_comparison.pdf, id=649, 850.66771pt x 544.46472pt>
 File: ./figures/fig4_baseline_comparison.pdf Graphic file (type pdf)
 <use ./figures/fig4_baseline_comparison.pdf>
 Package pdftex.def Info: ./figures/fig4_baseline_comparison.pdf  used on input 
-line 450.
+line 454.
 (pdftex.def)             Requested size: 444.59857pt x 284.56055pt.
-<./figures/fig5_ekf_error.pdf, id=641, 851.64131pt x 471.47205pt>
+<./figures/fig5_ekf_error.pdf, id=650, 851.64131pt x 471.47205pt>
 File: ./figures/fig5_ekf_error.pdf Graphic file (type pdf)
 <use ./figures/fig5_ekf_error.pdf>
-Package pdftex.def Info: ./figures/fig5_ekf_error.pdf  used on input line 457.
+Package pdftex.def Info: ./figures/fig5_ekf_error.pdf  used on input line 461.
 (pdftex.def)             Requested size: 444.59857pt x 246.13087pt.
 
-Overfull \hbox (25.99107pt too wide) in paragraph at lines 468--480
+Overfull \hbox (25.99107pt too wide) in paragraph at lines 472--484
  [][] 
  []
 
 
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-
-
-[11]
 
 [12 <./figures/fig4_baseline_comparison.pdf>]
-<./figures/fig6_noise_sensitivity.pdf, id=721, 1045.10445pt x 584.40733pt>
+
+[13 <./figures/fig5_ekf_error.pdf>]
+<./figures/fig6_noise_sensitivity.pdf, id=799, 1045.10445pt x 584.40733pt>
 File: ./figures/fig6_noise_sensitivity.pdf Graphic file (type pdf)
 <use ./figures/fig6_noise_sensitivity.pdf>
 Package pdftex.def Info: ./figures/fig6_noise_sensitivity.pdf  used on input li
-ne 496.
+ne 500.
 (pdftex.def)             Requested size: 444.59857pt x 248.60614pt.
 
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
 LaTeX Font Info:    Trying to load font information for TS1+txr on input line 5
-26.
+30.
 (/usr/local/texlive/2025/texmf-dist/tex/latex/txfonts/ts1txr.fd
 File: ts1txr.fd 2000/12/15 v3.1
 )
 
-[13 <./figures/fig5_ekf_error.pdf>]
-<./figures/fig8_monte_carlo.pdf, id=801, 853.28853pt x 290.55426pt>
+[14 <./figures/fig6_noise_sensitivity.pdf>]
+<./figures/fig8_monte_carlo.pdf, id=897, 853.28853pt x 290.55426pt>
 File: ./figures/fig8_monte_carlo.pdf Graphic file (type pdf)
 <use ./figures/fig8_monte_carlo.pdf>
-Package pdftex.def Info: ./figures/fig8_monte_carlo.pdf  used on input line 535
+Package pdftex.def Info: ./figures/fig8_monte_carlo.pdf  used on input line 539
 .
 (pdftex.def)             Requested size: 444.59857pt x 151.39055pt.
-<./figures/fig9_monte_carlo_ekf.pdf, id=802, 853.28853pt x 291.69855pt>
+<./figures/fig9_monte_carlo_ekf.pdf, id=898, 853.28853pt x 291.69855pt>
 File: ./figures/fig9_monte_carlo_ekf.pdf Graphic file (type pdf)
 <use ./figures/fig9_monte_carlo_ekf.pdf>
 Package pdftex.def Info: ./figures/fig9_monte_carlo_ekf.pdf  used on input line
- 542.
+ 546.
 (pdftex.def)             Requested size: 444.59857pt x 151.98677pt.
 
 
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-<./figures/fig7_eccentricity_sweep.pdf, id=803, 852.97859pt x 291.287pt>
+[15 <./figures/fig8_monte_carlo.pdf>]
+<./figures/fig7_eccentricity_sweep.pdf, id=968, 852.97859pt x 291.287pt>
 File: ./figures/fig7_eccentricity_sweep.pdf Graphic file (type pdf)
 <use ./figures/fig7_eccentricity_sweep.pdf>
 Package pdftex.def Info: ./figures/fig7_eccentricity_sweep.pdf  used on input l
-ine 574.
+ine 578.
 (pdftex.def)             Requested size: 444.59857pt x 151.82568pt.
 
 
-[14 <./figures/fig6_noise_sensitivity.pdf>]
+[16 <./figures/fig9_monte_carlo_ekf.pdf> <./figures/fig7_eccentricity_sweep.pdf
+>]
 
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-
-
-[15 <./figures/fig8_monte_carlo.pdf>]
-
-[16 <./figures/fig9_monte_carlo_ekf.pdf>]
-
-[17 <./figures/fig7_eccentricity_sweep.pdf>]
+[17]
 
 [18]
 
@@ -1013,13 +1016,13 @@ Package rerunfilecheck Info: File `manuscript.out' has not changed.
 (rerunfilecheck)             Checksum: 20010E6E8F4CC679FA08097C1E1D808F;7742.
  ) 
 Here is how much of TeX's memory you used:
- 12904 strings out of 473190
- 194283 string characters out of 5715800
- 598583 words of memory out of 5000000
- 35780 multiletter control sequences out of 15000+600000
+ 12907 strings out of 473190
+ 194308 string characters out of 5715800
+ 599792 words of memory out of 5000000
+ 35783 multiletter control sequences out of 15000+600000
  621482 words of font info for 154 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 75i,18n,79p,1704b,651s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 75i,18n,79p,1979b,605s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/symbols/msam1
 0.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/symbols/m
 sbm10.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/txfonts/rtcxr.
@@ -1033,10 +1036,10 @@ mf-dist/fonts/type1/public/txfonts/txex.pfb></usr/local/texlive/2025/texmf-dist
 type1/urw/times/utmb8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/urw/
 times/utmr8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/urw/times/utmr
 i8a.pfb>
-Output written on manuscript.pdf (21 pages, 1285802 bytes).
+Output written on manuscript.pdf (21 pages, 1287540 bytes).
 PDF statistics:
- 1254 PDF objects out of 1440 (max. 8388607)
- 582 compressed objects within 6 object streams
+ 1258 PDF objects out of 1440 (max. 8388607)
+ 586 compressed objects within 6 object streams
  156 named destinations out of 1000 (max. 500000)
  358 words of extra memory for PDF output out of 10000 (max. 10000000)
 

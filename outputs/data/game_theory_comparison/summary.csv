@@ -1,0 +1,7 @@
+mode,label,captured,capture_time_h,final_dist_km
+baseline,"Nash 基线 (γ=√2, 共用A)",True,15.3361,0.0998
+hypergame_2.0,"Hypergame (γ_p=2.0, γ_e=√2)",True,11.5861,0.0999
+hypergame_3.0,"Hypergame (γ_p=3.0, γ_e=√2)",True,10.4111,0.0993
+hinf_robust,"H∞ 鲁棒 (θ=1e3, 3σ worst-case)",True,11.5889,0.0913
+belief_R_0.5,"信念自适应R (α=0.5, 不确定时更激进)",True,13.5000,0.0998
+belief_R_1.0,"信念自适应R (α=1.0, 线性缩放)",True,10.9806,0.0991
