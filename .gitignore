@@ -18,5 +18,8 @@ aerospace/experiments/
 
 /node_modules/
 
+# MATLAB auxiliary code (not for submission)
+w_and_q/
+
 # macOS
 .DS_Store

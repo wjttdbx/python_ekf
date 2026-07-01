@@ -1,0 +1,5 @@
+mode,captured,capture_time_h,final_dist_km,final_pos_err_km,final_vel_err_kms,final_P_trace
+AO,True,10.4111,0.0993,0.0327,0.000054,5.333452e+00
+RA,True,17.1778,0.0985,0.0071,0.000071,8.836504e-05
+AD,True,18.5222,0.0916,0.6841,0.000827,1.105096e+00
+FULL,True,17.1917,0.0994,0.0025,0.000056,8.830748e-05

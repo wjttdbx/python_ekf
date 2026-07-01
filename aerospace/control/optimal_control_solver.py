@@ -113,7 +113,7 @@ def solve_optimal_control(
     # ── 变量边界 ──
     opti.subject_to(T_var >= 100)
     opti.subject_to(T_var <= 500000)
-    opti.subject_to(opti.bounded(-u_max, U, u_max))
+    # u_max 约束已移除，允许 CasADi 自由选择推力
     # 状态边界 (帮助求解器)
     for k in range(N + 1):
         opti.subject_to(opti.bounded(-2000, X[0, k], 2000))

@@ -1,0 +1,5 @@
+mode,captured,capture_time_h,final_dist_km,n_steps
+omniscient,True,24.4806,0.0998,8814
+shared_A,True,15.3361,0.0998,5522
+dual_A,True,15.3000,0.0997,5509
+true_A,True,15.3361,0.0996,5522
