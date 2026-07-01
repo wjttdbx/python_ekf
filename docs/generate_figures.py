@@ -126,74 +126,106 @@ def run_simulation(seed, sigma_ang_deg=SIGMA_ANG, angles_only=True, t_end=None):
 
 def fig1_lvlh_frame():
     """Schematic of LVLH coordinate frame with reference orbit and two spacecraft."""
-    fig, ax = plt.subplots(figsize=(6.5, 5.5))
+    fig, ax = plt.subplots(figsize=(7.2, 4.8))
     ax.set_aspect("equal")
     ax.axis("off")
 
-    # Earth at origin
-    earth = plt.Circle((0, 0), 0.35, color="#2E75B6", ec="#1A3A5C", lw=1.2, zorder=3)
-    ax.add_patch(earth)
-    ax.text(0, 0, "Earth", ha="center", va="center", fontsize=7, color="white", weight="bold")
+    colors = {
+        "orbit": "#6F7782",
+        "earth": "#2F6FA3",
+        "earth_edge": "#183D5E",
+        "target": "#243B53",
+        "chaser": "#C2413B",
+        "radial": "#D64A3A",
+        "along": "#2A7F62",
+        "normal": "#6D5BA6",
+        "rel": "#1F6F8B",
+        "label_bg": "#FFFFFF",
+    }
 
-    # Reference orbit (elliptical)
-    a, b = 3.0, 2.4  # semi-major, semi-minor axes
-    theta = np.linspace(0, 2 * np.pi, 300)
+    def unit(v):
+        return v / np.linalg.norm(v)
+
+    # Reference orbit and central body. The orbit is intentionally light so the
+    # local LVLH geometry remains the main visual claim.
+    a, b = 3.45, 2.35
+    theta = np.linspace(0, 2 * np.pi, 500)
     orbit_x = a * np.cos(theta)
     orbit_y = b * np.sin(theta)
-    ax.plot(orbit_x, orbit_y, "k--", lw=0.8, alpha=0.5, zorder=1)
+    ax.plot(orbit_x, orbit_y, color=colors["orbit"], lw=1.1, ls=(0, (5, 4)), zorder=1)
 
-    # Chief position on the orbit
-    chief_angle = np.deg2rad(40)
-    cx, cy = a * np.cos(chief_angle), b * np.sin(chief_angle)
-    ax.plot(cx, cy, "ko", markersize=7, zorder=4)
-    ax.text(cx + 0.15, cy + 0.2, "Chief", fontsize=8, weight="bold")
+    earth = plt.Circle((0, 0), 0.38, color=colors["earth"], ec=colors["earth_edge"], lw=1.2, zorder=3)
+    ax.add_patch(earth)
+    ax.text(0, 0, "Earth", ha="center", va="center", fontsize=8, color="white", weight="bold")
 
-    # Deputy position (offset from chief)
-    dx, dy = 0.7, 0.5
-    px, py = cx + dx, cy + dy
-    ax.plot(px, py, "k^", markersize=7, zorder=4)
-    ax.text(px + 0.15, py + 0.15, "Chaser", fontsize=8, weight="bold")
-    ax.plot([cx, px], [cy, py], "k-", lw=0.8, alpha=0.5)
+    # Target spacecraft and LVLH basis at the current reference-orbit point.
+    nu = np.deg2rad(38)
+    target = np.array([a * np.cos(nu), b * np.sin(nu)])
+    radial = unit(target)
+    tangent = unit(np.array([-a * np.sin(nu), b * np.cos(nu)]))
+    if tangent[0] < 0:
+        tangent = -tangent
 
-    # LVLH axes at chief position
-    axis_len = 0.9
-    # x — radial (outward from Earth center)
-    radial_dir = np.array([cx, cy]) / np.sqrt(cx**2 + cy**2)
-    ax.arrow(cx, cy, axis_len * radial_dir[0], axis_len * radial_dir[1],
-             head_width=0.06, head_length=0.1, fc="#E74C3C", ec="#E74C3C", lw=1.2, zorder=5)
-    ax.text(cx + axis_len * radial_dir[0] + 0.08, cy + axis_len * radial_dir[1] + 0.08,
-            r"$\hat{x}$ (radial)", fontsize=8, color="#E74C3C")
+    chaser = target + 0.74 * radial + 0.45 * tangent
+    axis_len = 1.05
 
-    # y — along-track (perpendicular to radial, in velocity direction)
-    vel_dir = np.array([-radial_dir[1], radial_dir[0]])
-    ax.arrow(cx, cy, axis_len * vel_dir[0], axis_len * vel_dir[1],
-             head_width=0.06, head_length=0.1, fc="#27AE60", ec="#27AE60", lw=1.2, zorder=5)
-    ax.text(cx + axis_len * vel_dir[0] + 0.05, cy + axis_len * vel_dir[1] - 0.15,
-            r"$\hat{y}$ (along-track)", fontsize=8, color="#27AE60")
+    # Faint Earth-to-target radius clarifies the local-vertical direction.
+    ax.plot([0, target[0]], [0, target[1]], color="#C8CDD3", lw=0.9, zorder=0)
+    def vec_arrow(start, end, color, lw=1.8, mutation_scale=12, zorder=6):
+        patch = FancyArrowPatch(
+            start,
+            end,
+            arrowstyle="-|>",
+            mutation_scale=mutation_scale,
+            lw=lw,
+            color=color,
+            shrinkA=0,
+            shrinkB=0,
+            zorder=zorder,
+        )
+        ax.add_patch(patch)
+        return patch
 
-    # z — cross-track (out of plane, indicated with a circle-dot)
-    ax.text(cx - 0.25, cy - 0.25, r"$\hat{z}$ (cross-track, out of page)",
-            fontsize=8, color="#8E44AD", style="italic")
+    vec_arrow(target, target + axis_len * radial, colors["radial"])
+    vec_arrow(target, target + axis_len * tangent, colors["along"])
+    vec_arrow(target, chaser, colors["rel"], lw=2.0, mutation_scale=14)
 
-    # Orbit direction arrow
-    mid_angle = np.deg2rad(15)
-    mdx = a * np.cos(mid_angle) - a * np.cos(mid_angle - 0.02)
-    mdy = b * np.sin(mid_angle) - b * np.sin(mid_angle - 0.02)
-    ax.annotate("", xy=(a * np.cos(mid_angle), b * np.sin(mid_angle)),
-                xytext=(a * np.cos(mid_angle + 0.1), b * np.sin(mid_angle + 0.1)),
-                arrowprops=dict(arrowstyle="->", color="gray", lw=1.2))
-    ax.text(a * np.cos(mid_angle + 0.15) + 0.05, b * np.sin(mid_angle + 0.15),
-            "Orbit", fontsize=7, color="gray")
+    ax.scatter(*target, s=65, color=colors["target"], zorder=7)
+    ax.scatter(*chaser, marker="^", s=82, color=colors["chaser"], edgecolor="#6F1D1B", lw=0.8, zorder=8)
 
-    # Relative position annotation
-    mid_pt = ((cx + px) / 2, (cy + py) / 2)
-    ax.annotate(r"$\mathbf{x}_{\rm rel}$", xy=mid_pt, xytext=(mid_pt[0] + 0.35, mid_pt[1] - 0.3),
-                fontsize=8, ha="center",
-                arrowprops=dict(arrowstyle="->", color="gray", lw=0.7))
+    label_box = dict(boxstyle="round,pad=0.18", fc=colors["label_bg"], ec="none", alpha=0.88)
+    ax.text(target[0] - 0.18, target[1] - 0.68, "Target\n(LVLH origin)", fontsize=8,
+            ha="right", va="top", color=colors["target"], bbox=label_box)
+    ax.text(chaser[0] + 0.18, chaser[1] - 0.02, "Chaser", fontsize=8,
+            ha="left", va="center", color=colors["chaser"], weight="bold", bbox=label_box)
 
-    ax.set_xlim(-3.8, 4.2)
-    ax.set_ylim(-3.5, 4.0)
-    ax.set_title("Fig. 1. LVLH coordinate frame and problem geometry.", pad=10)
+    ax.text(*(target + 1.26 * radial + np.array([0.0, 0.08])), r"$\hat{x}$ radial", fontsize=8.5,
+            color=colors["radial"], ha="left", va="center", bbox=label_box)
+    ax.text(*(target + 1.16 * tangent + np.array([0.0, 0.08])), r"$\hat{y}$ along-track",
+            fontsize=8.5, color=colors["along"], ha="left", va="bottom", bbox=label_box)
+    rel_mid = 0.5 * (target + chaser)
+    ax.text(*(rel_mid + np.array([0.12, -0.23])), r"$\mathbf{x}_{rel}$", fontsize=9,
+            color=colors["rel"], ha="left", va="top", bbox=label_box)
+
+    # Cross-track axis as the standard circle-dot symbol.
+    z_center = target - 0.58 * tangent - 0.34 * radial
+    z_ring = plt.Circle(z_center, 0.13, fill=False, ec=colors["normal"], lw=1.4, zorder=6)
+    z_dot = plt.Circle(z_center, 0.035, color=colors["normal"], zorder=7)
+    ax.add_patch(z_ring)
+    ax.add_patch(z_dot)
+    ax.text(z_center[0] - 0.05, z_center[1] - 0.25, r"$\hat{z}$ cross-track",
+            fontsize=8.5, color=colors["normal"], ha="center", va="top", bbox=label_box)
+
+    # Orbit direction arrow, separated from the local-frame labels.
+    a0, a1 = np.deg2rad(-22), np.deg2rad(-10)
+    p0 = np.array([a * np.cos(a0), b * np.sin(a0)])
+    p1 = np.array([a * np.cos(a1), b * np.sin(a1)])
+    vec_arrow(p0, p1, colors["orbit"], lw=1.2, mutation_scale=10, zorder=4)
+    ax.text(p1[0] + 0.08, p1[1] - 0.06, "reference orbit", fontsize=7.5,
+            color=colors["orbit"], ha="left", va="top")
+
+    ax.set_xlim(-3.9, 5.0)
+    ax.set_ylim(-2.95, 3.65)
 
     fig.savefig(OUT / "fig1_lvlh_frame.pdf")
     plt.close(fig)
@@ -206,89 +238,94 @@ def fig1_lvlh_frame():
 
 def fig2_flow_diagram():
     """Block diagram of the unified EKF-SDRE framework showing A_SDC reuse."""
-    fig, ax = plt.subplots(figsize=(9, 6))
+    fig, ax = plt.subplots(figsize=(9.2, 4.7))
     ax.set_xlim(0, 10)
-    ax.set_ylim(0, 8)
+    ax.set_ylim(0, 5.4)
     ax.axis("off")
 
-    # ── helper: draw a rounded box ──
-    def box(ax, x, y, w, h, text, color="#D5E8D4", text_color="black", fontsize=8):
+    palette = {
+        "state": "#E8E1F2",
+        "sdc": "#FFF0C7",
+        "control": "#DDEEDB",
+        "plant": "#F5D6D4",
+        "estimate": "#DCE9FA",
+        "sensor": "#EFE4F5",
+        "edge": "#2D3748",
+        "muted": "#697386",
+        "accent": "#D64A3A",
+        "lane": "#F7F9FB",
+    }
+
+    # Shaded lanes keep the control and estimation branches visually separated.
+    ax.add_patch(FancyBboxPatch((5.05, 3.12), 4.55, 1.78, boxstyle="round,pad=0.05",
+                                fc=palette["lane"], ec="#D8DEE8", lw=0.7, zorder=0))
+    ax.add_patch(FancyBboxPatch((5.05, 0.62), 4.55, 1.78, boxstyle="round,pad=0.05",
+                                fc=palette["lane"], ec="#D8DEE8", lw=0.7, zorder=0))
+    ax.text(9.35, 4.73, "control branch", fontsize=7.5, color=palette["muted"],
+            ha="right", va="center")
+    ax.text(9.35, 2.23, "estimation branch", fontsize=7.5, color=palette["muted"],
+            ha="right", va="center")
+
+    def box(x, y, w, h, title, subtitle="", color="#FFFFFF", title_size=9, subtitle_size=7.3):
         rect = FancyBboxPatch((x - w / 2, y - h / 2), w, h,
-                              boxstyle="round,pad=0.1", fc=color, ec="#333", lw=0.8)
+                              boxstyle="round,pad=0.08,rounding_size=0.08",
+                              fc=color, ec=palette["edge"], lw=0.9, zorder=2)
         ax.add_patch(rect)
-        ax.text(x, y, text, ha="center", va="center", fontsize=fontsize,
-                color=text_color, weight="bold" if color != "white" else "normal")
+        ax.text(x, y + (0.12 if subtitle else 0.0), title, ha="center", va="center",
+                fontsize=title_size, color="#111827", weight="bold", zorder=3)
+        if subtitle:
+            ax.text(x, y - 0.25, subtitle, ha="center", va="center",
+                    fontsize=subtitle_size, color="#4B5563", zorder=3)
 
-    def arrow(x1, y1, x2, y2, color="#333", lw=1.0):
-        ax.annotate("", xy=(x2, y2), xytext=(x1, y1),
-                    arrowprops=dict(arrowstyle="->", color=color, lw=lw))
+    def arrow(start, end, color=None, lw=1.15, rad=0.0, style="-|>", zorder=4):
+        patch = FancyArrowPatch(
+            start,
+            end,
+            arrowstyle=style,
+            mutation_scale=11,
+            lw=lw,
+            color=color or palette["edge"],
+            connectionstyle=f"arc3,rad={rad}",
+            shrinkA=4,
+            shrinkB=4,
+            zorder=zorder,
+        )
+        ax.add_patch(patch)
+        return patch
 
-    def label(x, y, text, fontsize=7, color="#555"):
-        ax.text(x, y, text, ha="center", va="center", fontsize=fontsize, color=color)
+    box(1.35, 2.75, 1.9, 0.82, r"Posterior estimate", r"$\hat{x}_{k|k},\ P_{k|k}$", palette["state"])
+    box(3.65, 2.75, 2.1, 1.05, r"Shared SDC matrix",
+        r"$A_{\mathrm{SDC}}(\hat{x}_{k|k},\nu_k)$", palette["sdc"], title_size=9.2)
+    box(6.35, 4.02, 2.05, 0.86, "SDRE control", r"ARE $\rightarrow\ u_k$", palette["control"])
+    box(8.65, 4.02, 1.75, 0.86, "13-D NERM", r"truth propagation", palette["plant"])
+    box(8.65, 1.48, 1.75, 0.86, "Angles-only", r"$z_k=[az,el]^T+v_k$", palette["sensor"])
+    box(6.35, 1.48, 2.05, 0.86, "EKF predict/update",
+        r"$F_k=I+A_{\mathrm{SDC}}\Delta t$", palette["estimate"])
 
-    # ── Nodes ──
-    # Row 1: state at t_k
-    box(ax, 1.5, 7.0, 2.0, 0.7, r"$\hat{\mathbf{x}}_{k|k}$", color="#E8D8F0")
-    label(1.5, 6.55, "EKF posterior", fontsize=6)
+    # Main loop. The two red arrows are the visual evidence for the figure's
+    # claim: one matrix instance fans out to both control and estimation.
+    arrow((2.32, 2.75), (2.58, 2.75))
+    arrow((4.68, 3.02), (5.38, 3.92), color=palette["accent"], lw=1.9)
+    arrow((4.68, 2.48), (5.38, 1.58), color=palette["accent"], lw=1.9)
+    arrow((7.38, 4.02), (7.76, 4.02))
+    arrow((8.65, 3.56), (8.65, 1.94))
+    arrow((7.78, 1.48), (7.38, 1.48))
+    arrow((5.30, 1.48), (2.25, 2.34), rad=-0.18)
 
-    # SDC computation
-    box(ax, 4.0, 7.0, 2.0, 0.7, r"$A_{\rm SDC}(t_k, \hat{\mathbf{x}}_{k|k})$", color="#FFF2CC")
-    label(4.0, 6.55, "One computation per step", fontsize=6)
+    ax.text(5.18, 2.77, "same\nmatrix", ha="center", va="center",
+            fontsize=8.2, color=palette["accent"], weight="bold",
+            bbox=dict(boxstyle="round,pad=0.20", fc="white", ec=palette["accent"], lw=0.9), zorder=5)
 
-    # Branch: control (upper)
-    box(ax, 7.0, 7.7, 2.0, 0.6, "SDRE: Solve ARE", color="#D5E8D4")
-    label(7.0, 7.32, r"$A^{\sf T}P + PA - PBR^{-1}B^{\sf T}P + Q = 0$", fontsize=6)
-    box(ax, 7.0, 6.8, 2.0, 0.5, r"$\mathbf{u}_c = -R^{-1}B^{\sf T}P\hat{\mathbf{x}}_{k|k}$", color="#D5E8D4")
-
-    # Branch: estimation (lower)
-    box(ax, 7.0, 5.8, 2.0, 0.6, "EKF Predict", color="#DAE8FC")
-    label(7.0, 5.45, r"$\mathbf{x}_{k+1|k} = (I + A_{\rm SDC}\cdot dt)\hat{\mathbf{x}}_{k|k}$", fontsize=6)
-
-    # True dynamics
-    box(ax, 4.0, 5.0, 2.5, 0.6, "True Dynamics (RK45)", color="#F8CECC")
-    label(4.0, 4.62, r"$\dot{\mathbf{X}} = f(\mathbf{X}, \mathbf{u}_c)$  (13-D NERM)", fontsize=6)
-
-    # Measurement
-    box(ax, 1.5, 5.0, 2.0, 0.6, "Sensor: Angles-Only", color="#E1D5E7")
-    label(1.5, 4.62, r"$\mathbf{z} = [az, el]^{\sf T} + \mathbf{v}$", fontsize=6)
-
-    # EKF Update
-    box(ax, 4.0, 4.0, 2.0, 0.6, "EKF Update", color="#DAE8FC")
-    label(4.0, 3.62, r"$\hat{\mathbf{x}}_{k+1|k+1}, \mathbf{P}_{k+1|k+1}$", fontsize=6)
-
-    # ── Arrows ──
-    arrow(2.5, 7.0, 3.0, 7.0)  # state → SDC
-    arrow(5.0, 7.0, 6.0, 7.7)  # SDC → SDRE (upper branch)
-    arrow(5.0, 7.0, 6.0, 5.8)  # SDC → EKF predict (lower branch)
-    arrow(7.0, 6.55, 7.0, 5.0)  # u_c → true dynamics (via center)
-    arrow(8.0, 6.8, 4.0, 5.35)  # u_c to dynamics
-
-    # From true dynamics → measurement
-    arrow(2.75, 5.0, 2.5, 5.0)
-
-    # measurement → EKF update
-    arrow(2.5, 5.3, 3.0, 4.3)  # curved path
-
-    # EKF update → state (feedback loop)
-    arrow(5.0, 4.0, 5.0, 5.0)
-    arrow(5.0, 5.0, 2.5, 5.0)
-    # EKF predict → update
-    arrow(8.0, 5.8, 5.0, 4.3)
-
-    # ── Highlight the A_SDC reuse ──
-    ax.annotate("", xy=(5.8, 6.3), xytext=(5.8, 7.3),
-                arrowprops=dict(arrowstyle="<->", color="#D43F3F", lw=2.5))
-    ax.text(6.3, 6.8, "SAME\nMATRIX", fontsize=7, color="#D43F3F", weight="bold",
-            ha="center", va="center",
-            bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#D43F3F", lw=0.8))
-
-    # ── Labels ──
-    ax.text(5.0, 7.8, "Unified EKF-SDRE Framework", ha="center", fontsize=13, weight="bold")
-    ax.text(8.5, 6.3, "Control\nPath", ha="center", fontsize=7, color="#5B9BD5", weight="bold")
-    ax.text(8.5, 5.55, "Estimation\nPath", ha="center", fontsize=7, color="#5B9BD5", weight="bold")
-
-    ax.set_title("Fig. 2. Unified EKF-SDRE algorithm flow — single $A_{\\rm SDC}(t_k)$ "
-                 "drives both control and estimation.", pad=18)
+    # Inputs and outputs that make the closed-loop timing explicit without
+    # adding extra boxes.
+    ax.text(3.65, 3.58, r"$f(x)=A(x)x$", ha="center", va="center",
+            fontsize=7.5, color="#5F4B00")
+    ax.text(6.35, 4.66, r"$A^TP+PA-PBR^{-1}B^TP+Q=0$", ha="center", va="center",
+            fontsize=7.2, color="#4B5563")
+    ax.text(8.95, 2.74, "relative state\nand line-of-sight",
+            ha="center", va="center", fontsize=7.0, color=palette["muted"])
+    ax.text(3.76, 1.52, "posterior at next step", ha="center", va="center",
+            fontsize=7.0, color=palette["muted"])
 
     fig.savefig(OUT / "fig2_flow_diagram.pdf")
     plt.close(fig)

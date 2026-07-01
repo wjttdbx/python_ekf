@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from pathlib import Path
+from zipfile import ZIP_DEFLATED, ZipFile
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -81,6 +83,40 @@ def build_docx() -> None:
             str(DOCX),
         ]
     )
+    ensure_docx_page_setup()
+
+
+def ensure_docx_page_setup() -> None:
+    """Pandoc may omit explicit page size; add A4 settings for Word renderers."""
+    section = (
+        '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>'
+        '<w:pgMar w:top="1417" w:right="1417" w:bottom="1417" w:left="1417" '
+        'w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>'
+    )
+    page_setup = section.removeprefix("<w:sectPr>").removesuffix("</w:sectPr>")
+    temp_docx = DOCX.with_suffix(".tmp.docx")
+
+    with ZipFile(DOCX, "r") as zin, ZipFile(temp_docx, "w", ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            if item.filename == "word/document.xml":
+                xml = data.decode("utf-8")
+                if "<w:pgSz" not in xml:
+                    if "<w:sectPr />" in xml:
+                        xml = xml.replace("<w:sectPr />", section, 1)
+                    elif "<w:sectPr/>" in xml:
+                        xml = xml.replace("<w:sectPr/>", section, 1)
+                    else:
+                        xml = re.sub(
+                            r"(<w:sectPr\b[^>]*>)",
+                            r"\1" + page_setup,
+                            xml,
+                            count=1,
+                        )
+                data = xml.encode("utf-8")
+            zout.writestr(item, data)
+
+    temp_docx.replace(DOCX)
 
 
 def build_pdf() -> None:

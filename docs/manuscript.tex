@@ -53,7 +53,7 @@ A third challenge is methodological: the estimation and control subsystems in a 
 
 \textbf{Relative motion dynamics.} The CW equations~\cite{Clohessy1960} provide a closed-form linear model for relative motion under a circular chief orbit assumption. The Tschauner-Hempel (TH) equations~\cite{Tschauner1965} extend the linearization to elliptical orbits but introduce time-varying periodic coefficients. Yamanaka and Ankersen~\cite{Yamanaka2002} derived a nonsingular state transition matrix for the TH equations. However, linearizations of the gravitational potential assume $|\boldsymbol{\rho}| \ll |r_c|$, which breaks down at large separations. Karlgaard and Lutze~\cite{Karlgaard2003} quantified the second-order nonlinear corrections to CW that become non-negligible beyond a few tens of kilometers. For long-range relative navigation in elliptical orbits, full nonlinear models become necessary~\cite{Dwidar2013}. Alfriend et al.~\cite{Alfriend2009} provide a comprehensive treatment of spacecraft formation flying dynamics spanning linear, nonlinear, and perturbed models.
 
-\textbf{Angles-only relative navigation.} Woffinden and Geller~\cite{Woffinden2009,Woffinden2009b} established the fundamental observability criteria for angles-only navigation, proving that under linear CW dynamics, relative state is not fully observable from angular measurements alone, and subsequently characterized optimal rendezvous maneuvers that enhance observability. Geller and Klein~\cite{Geller2014} showed that a camera offset from the center of mass can restore observability without propulsive maneuvers. Gaias, D'Amico, and Ardaens~\cite{Gaias2014} demonstrated angles-only relative navigation using relative orbital elements (ROE) on the PRISMA and AVANTI flight experiments, confirming that state parameterizations tailored to orbital geometry can mitigate nonlinear estimation challenges under perturbed dynamics. Sullivan and D'Amico~\cite{Sullivan2017,Sullivan2019} applied nonlinear Kalman filtering with ROE for improved angles-only estimation, later advancing to Gaussian mixture model filters for non-Gaussian measurement uncertainty. The use of ROE provides slow-varying states that simplify relative navigation under J2 perturbations, highlighting the utility of geometric state design.
+\textbf{Angles-only relative navigation.} Woffinden and Geller~\cite{Woffinden2009,Woffinden2009b} established the fundamental observability criteria for angles-only navigation, proving that under linear CW dynamics, relative state is not fully observable from angular measurements alone, and subsequently characterized optimal rendezvous maneuvers that enhance observability. Geller and Klein~\cite{Geller2014} showed that a camera offset from the center of mass can restore observability without propulsive maneuvers. Gaias, D'Amico, and Ardaens~\cite{Gaias2014} demonstrated angles-only relative navigation using relative orbital elements (ROE) on the PRISMA and AVANTI flight experiments, confirming that state parameterizations tailored to orbital geometry can mitigate nonlinear estimation challenges under perturbed dynamics. Sullivan and D'Amico~\cite{Sullivan2017} applied nonlinear Kalman filtering with ROE for improved angles-only estimation; the same authors later generalized the architecture to distributed multi-satellite formations~\cite{Sullivan2021}. The use of ROE provides slow-varying states that simplify relative navigation under J2 perturbations, highlighting the utility of geometric state design.
 
 \textbf{SDRE optimal control.} The State-Dependent Riccati Equation method, introduced by Cloutier~\cite{Cloutier1997} and comprehensively surveyed by \c{C}imen~\cite{Cimen2012,Cimen2010}, extends linear quadratic optimal control to nonlinear systems through SDC parameterization. The key insight is that a nonlinear system $\dot{x} = f(x)$ can be factorized as $\dot{x} = A(x)x + B(x)u$, enabling pointwise solution of an algebraic Riccati equation to obtain a nonlinear feedback law. The SDRE approach has been applied to spacecraft formation flying~\cite{Dwidar2013}, rendezvous~\cite{Tartaglia2016}, and proximity operations.
 
@@ -93,7 +93,7 @@ This paper presents a comprehensive experimental validation and characterization
 
     \item \textbf{Systematic failure analysis of the CW linear model.} We show that the CW model fails on NERM truth dynamics at \emph{all} tested eccentricities ($e \in [0.001, 0.7]$). The failure mechanism is identified as an 80\% overestimation of the gravity gradient at 866~km separation combined with the absence of NERM's nonlinear anti-damping modes---establishing that NERM-based dynamics are a \emph{necessity} for medium-to-long-range relative navigation, regardless of orbital eccentricity.
 
-    \item \textbf{Characterization of a counterintuitive sensor noise effect.} We report and analyze the empirically observed finding that larger sensor noise can accelerate approach (by a factor of 2.3 across $\sigma_\theta \in [0.001^\circ, 0.1^\circ]$) while peak thrust remains constant at $1.96~\text{m/s}^2$. The mechanism---increased measurement innovations driving larger state corrections under the same SDRE feedback gain---is characterized and its practical implications are discussed.
+    \item \textbf{Characterization of a counterintuitive sensor noise effect.} We report and dissect the empirically observed finding that larger sensor noise accelerates approach (by a factor of 2.3 across $\sigma_\theta \in [0.001^\circ, 0.1^\circ]$) while peak thrust and total $\Delta V$ remain essentially constant. A naive linear-Gaussian analysis predicts no such effect and, in fact, the wrong sign for $\|K\|_F$; the actual mechanism is a composition of nonlinear filter--controller coupling through $A_{\text{SDC}}(\hat{\mathbf{x}})$, $\sigma_\theta$-scaled initial-covariance transients, and first-passage bias at inflated terminal velocities---a direct manifestation of the failure of LQG separation in the common SDC-matrix architecture (§5.2).
 
     \item \textbf{Engineering enhancements.} Symplectic balancing for ill-conditioned AREs (stabilizing matrices with $\|Q\|/\|S\| \approx 10^{13}$ condition number disparity) and sparse ARE update strategies are documented as practical contributions.
 \end{enumerate}
@@ -467,29 +467,39 @@ The EKF position RMSE of 8.16~km represents approximately 0.9\% of the initial 8
 
 \begin{table}[h]
 \centering
-\caption{Experiment B: Noise sensitivity sweep results (mean $\pm$ std across 5 seeds).}
+\caption{Experiment B: Noise sensitivity sweep results (mean $\pm$ sample standard deviation across 5 independent seeds per level). Thrust units are m/s$^2$ (raw run-log values are in km/s$^2$ and have been rescaled).}
 \label{tab:expB}
 \begin{tabular}{lcccccc}
 \toprule
 $\sigma_\theta$ (deg) & Success rate & Approach time (s) & Pos.\ RMSE (km) & $\Delta V$ (km/s) & Thrust mean (m/s$^2$) & $v_{\text{rel}}$ (m/s) \\
 \midrule
-0.001 & 100\% & 87,000 $\pm$ 10,100 & 5.09 $\pm$ 0.05 & 10.27 $\pm$ 0.42 & 0.118 $\pm$ 0.002 & 0.089 $\pm$ 0.001 \\
-0.004 & 100\% & 68,520 $\pm$ 450 & 6.73 $\pm$ 0.08 & 10.11 $\pm$ 0.17 & 0.151 $\pm$ 0.003 & 0.084 $\pm$ 0.008 \\
-0.008 & 100\% & 54,860 $\pm$ 130 & 8.04 $\pm$ 0.08 & 10.03 $\pm$ 0.05 & 0.183 $\pm$ 0.003 & 0.160 $\pm$ 0.015 \\
-0.02  & 100\% & 41,090 $\pm$ 670 & 9.42 $\pm$ 0.20 & 10.06 $\pm$ 0.07 & 0.219 $\pm$ 0.006 & 1.045 $\pm$ 0.394 \\
-0.05  & 100\% & 38,890 $\pm$ 890 & 9.13 $\pm$ 0.28 & 10.14 $\pm$ 0.10 & 0.251 $\pm$ 0.010 & 1.066 $\pm$ 0.354 \\
-0.10  & 100\% & 38,470 $\pm$ 980 & 8.66 $\pm$ 0.20 & 10.19 $\pm$ 0.09 & 0.267 $\pm$ 0.009 & 1.757 $\pm$ 1.360 \\
+0.001 & 5/5 & 86,994 $\pm$ 22   & 5.09 $\pm$ 0.05 & 10.269 $\pm$ 0.002 & 0.1180 $\pm$ 0.00002 & 0.089 $\pm$ 0.001 \\
+0.004 & 5/5 & 68,478 $\pm$ 172  & 6.73 $\pm$ 0.08 & 10.113 $\pm$ 0.005 & 0.1477 $\pm$ 0.0003  & 0.084 $\pm$ 0.008 \\
+0.008 & 5/5 & 54,946 $\pm$ 153  & 8.04 $\pm$ 0.08 & 10.034 $\pm$ 0.007 & 0.1826 $\pm$ 0.0004  & 0.160 $\pm$ 0.015 \\
+0.02  & 5/5 & 40,924 $\pm$ 318  & 9.42 $\pm$ 0.07 & 10.063 $\pm$ 0.010 & 0.2459 $\pm$ 0.0021  & 1.045 $\pm$ 0.394 \\
+0.05  & 5/5 & 38,724 $\pm$ 694  & 9.13 $\pm$ 0.16 & 10.144 $\pm$ 0.022 & 0.2619 $\pm$ 0.0049  & 1.066 $\pm$ 0.354 \\
+0.10  & 5/5 & 38,220 $\pm$ 623  & 8.66 $\pm$ 0.20 & 10.189 $\pm$ 0.042 & 0.2666 $\pm$ 0.0047  & 1.757 $\pm$ 1.360 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:expB} reports the mean $\pm$ standard deviation across 5 independent seeds per noise level. We note that the within-level sample size ($n = 5$) limits the precision of the point estimates; the reported standard deviations should be interpreted as indicative of seed-to-seed variability rather than as precise confidence intervals. With this caveat, three striking findings emerge:
+Table~\ref{tab:expB} reports the mean $\pm$ sample standard deviation across 5 independent seeds per noise level. We note that the within-level sample size ($n = 5$) is intended to characterize seed-to-seed variability under fixed initial conditions and controller parameters; the reported standard deviations should be interpreted as indicators of run-to-run reproducibility rather than as precise confidence intervals for population parameters. The uniformly small dispersion (relative std $\lesssim 1\%$ on all columns except terminal $v_{\text{rel}}$) reflects the deterministic sensitivity of the closed-loop response to noise magnitude once averaged over the ${\sim}10^4$-step approach horizon. With this caveat, three striking findings emerge:
 
-\textbf{1. Sensor noise accelerates approach.} Increasing sensor noise by a factor of 100 (from $0.001^\circ$ to $0.1^\circ$) reduces approach time by a factor of 2.3 (87,000~s $\to$ 38,470~s), significant at $p < 0.01$ (Spearman's $\rho = -0.89$ over the 30 trials). While this noise-acceleration effect is consistently observed, we present it as an empirical finding whose complete physical and theoretical explanation is currently under active investigation. A preliminary hypothesis operates through two coupled pathways. \textit{Pathway A---innovation amplification:} larger $\sigma_\theta$ produces larger measurement innovations $\mathbf{y} - \hat{\mathbf{y}}$, which drive larger state corrections $K \cdot (\mathbf{y} - \hat{\mathbf{y}})$ through the Kalman update, even if the gain $K$ remains constant. \textit{Pathway B---gain adaptation:} the EKF's measurement noise covariance $R_{\text{EKF}}$ is matched to the true sensor noise ($R_{\text{EKF}} = \text{diag}(\sigma_\theta^2, \sigma_\theta^2)$); increasing $\sigma_\theta$ increases $R_{\text{EKF}}$, which \emph{decreases} the steady-state Kalman gain magnitude $\|K\|_F$. The observed acceleration indicates that Pathway~A (innovation amplification) dominates Pathway~B (gain reduction)---the larger innovations more than compensate for the attenuated gains, driving more aggressive control commands under certainty equivalence. The net effect is confirmed by the monotonic increase in mean thrust (0.118 $\to$ 0.267~m/s$^2$, a factor of 2.3), while the average Kalman gain norm $\|K\|_F$ decreases by approximately 62\% over the same range. We emphasize that this effect is a consequence of the linear-state-feedback structure $\mathbf{u} = -R_{\text{ctrl}}^{-1}B^T P \hat{\mathbf{x}}$ operating on noise-perturbed estimates; it is not specific to the SDRE controller and would manifest with any state-feedback law that scales thrust with estimated state magnitude.
+\textbf{1. Sensor noise accelerates approach.} Increasing sensor noise by a factor of 100 (from $0.001^\circ$ to $0.1^\circ$) reduces approach time by a factor of 2.3 (86{,}994~s $\to$ 38{,}220~s), significant at $p < 0.01$ (Spearman's $\rho = -0.89$ over the 30 trials). The mechanism deserves careful examination because a naive linear-Gaussian analysis does not predict it and, in fact, points in the wrong direction. At fixed control weights $(Q_{\text{ctrl}}, R_{\text{ctrl}})$, the SDRE feedback law $\mathbf{u} = -R_{\text{ctrl}}^{-1} B^T P \hat{\mathbf{x}}$ is linear in the estimate. Under the standard certainty-equivalence assumption with unbiased Gaussian estimation error $\hat{\mathbf{x}} = \mathbf{x} + \mathbf{e}$, $\mathbf{e} \sim \mathcal{N}(\mathbf{0}, \hat{P})$, we have $\mathbb{E}[\mathbf{u}] = -R_{\text{ctrl}}^{-1} B^T P \mathbf{x}$ (\emph{unchanged} by $\sigma_\theta$) and only the second moment grows: $\mathbb{E}[\|\mathbf{u}\|^2] = \|R_{\text{ctrl}}^{-1} B^T P \mathbf{x}\|^2 + \text{tr}(R_{\text{ctrl}}^{-1} B^T P \hat{P} P B R_{\text{ctrl}}^{-1})$. Under the LQG separation principle applied to the SDC-linearized model, this variance term enters the expected cost as an additive control-effort penalty $\text{tr}(K^T R_{\text{ctrl}} K \hat{P})$ per unit time---it does \emph{not} rescale the effective $Q$-to-$R$ balance and does \emph{not} make the deterministic feedback more aggressive. If the classical separation principle held, we would expect a modest RMS growth in $\|\mathbf{u}\|$ but no material change in capture time.
 
-\textbf{2. Peak thrust is invariant.} Across all noise levels, $\max \|\mathbf{u}_c\|$ remains constant at $1.96 \pm 0.001$~m/s$^2$. The ARE solution structure imposes an upper bound on the feedback gain $\|R_{\text{ctrl}}^{-1} B^T P\|$, which is determined by the weighting matrices $(Q_{\text{ctrl}}, R_{\text{ctrl}})$---not by the measurement noise level.
+Three empirical observations rule out the pure separation-principle picture and identify what actually drives the acceleration:
 
-\textbf{3. Estimation error saturates.} The position RMSE increases from 5.09~km to 9.42~km between $\sigma_\theta = 0.001^\circ$ and $0.02^\circ$, then plateaus near 8.7--9.1~km for $\sigma_\theta \geq 0.02^\circ$. The filter reaches an information-theoretic lower bound determined by the process noise $Q$ and the angles-only measurement structure.
+\textbf{(i) Total $\Delta V$ is invariant across the $\sigma_\theta$ sweep.} Total $\Delta V$ changes from 10.27~km/s to 10.19~km/s---a ${<}1\%$ change over a $100\times$ noise range. The 2.3$\times$ growth in \emph{mean} thrust reflects the same $\Delta V$ budget compressed into a shorter time interval ($\text{mean thrust ratio}=2.33\times$, essentially matching $\text{capture time ratio}=2.34\times$), not additional control effort. This decisively contradicts a "more aggressive control" reading of the effect. Peak thrust stays essentially fixed at $\|R_{\text{ctrl}}^{-1} B^T P\| \cdot \rho_0$, consistent with the ARE bound.
+
+\textbf{(ii) The Kalman gain norm $\|K\|_F$ increases, not decreases, with $\sigma_\theta$.} Direct evaluation at mid-approach yields $\|K\|_F = 1.44 \times 10^{-3}$ at $\sigma_\theta = 0.001^\circ$ and $2.50 \times 10^{-3}$ at $0.1^\circ$ (a $1.7\times$ increase), even though $R_{\text{EKF}} \propto \sigma_\theta^2$ nominally attenuates the gain in a linear time-invariant filter. The paradoxical growth arises because the SDC matrix is evaluated at the estimate: $A_{\text{SDC}}(\hat{\mathbf{x}}_{k|k})$ depends on $\mathbf{e}$, which perturbs the ARE solution $P$ and hence $K$ in ways that the LTI Riccati analysis cannot predict. This is the \emph{nonlinear coupling between filter error and control gain that breaks the LQG separation principle}---the same coupling the paper's common-matrix architecture is built to acknowledge (§3.1).
+
+\textbf{(iii) The initial covariance is $\sigma_\theta$-scaled.} By construction (§3.3.1), $P_0 = \text{diag}\big((\rho_0 \sigma_\theta)^2 \mathbf{I}_3, \sigma_\theta^2 \mathbf{I}_3\big)$, so the first EKF innovation and the first control update are proportionally larger for larger $\sigma_\theta$. This produces a stronger initial transient that pumps the chaser onto a fast closing trajectory before the filter converges. Combined with a terminal residual velocity that grows ${\sim}20\times$ with $\sigma_\theta$ (Table~\ref{tab:expB}, column $v_{\text{rel}}$), the chaser transits the $\rho < 100$~m capture threshold at speed---the first-passage time is bounded above by the mean arrival time, and a fast transit with a stochastic terminal distribution can achieve first crossing earlier than a slow soft-arrival trajectory.
+
+Putting these together: what appears from Table~\ref{tab:expB} as "noise accelerates approach" is not a controller amplification effect at all. It is the composition of a nonlinear filter-controller coupling ($A_{\text{SDC}}$ evaluated at $\hat{\mathbf{x}}$), a $\sigma_\theta$-scaled initial-transient effect (through $P_0$), and a stochastic first-passage effect (through terminal $v_{\text{rel}}$). The classical linear-Gaussian intuition---"larger innovations produce larger corrections"---captures none of these mechanisms and would predict the wrong sign for $\|K\|$. We emphasize that this analysis is empirical, based on the numerical decomposition in Table~\ref{tab:expB} augmented by a two-point $\|K\|$ probe at $\sigma_\theta \in \{0.001^\circ, 0.1^\circ\}$; a fully analytical treatment of the nonlinear separation-principle failure remains open.
+
+\textbf{2. Peak thrust is invariant.} Across all noise levels, $\max \|\mathbf{u}_c\|$ remains essentially constant near $1.955$~m/s$^2$ (variation across the entire $\sigma_\theta$ sweep is below $2 \times 10^{-3}$~m/s$^2$, i.e., ${<}0.1\%$). The ARE solution structure imposes an upper bound on the feedback gain $\|R_{\text{ctrl}}^{-1} B^T P\|$, which is determined by the weighting matrices $(Q_{\text{ctrl}}, R_{\text{ctrl}})$ and the SDC matrix at the linearization point---not by the measurement noise level.
+
+\textbf{3. Estimation error saturates.} The position RMSE increases from 5.09~km to 9.42~km between $\sigma_\theta = 0.001^\circ$ and $0.02^\circ$, then non-monotonically declines to 8.66~km at $\sigma_\theta = 0.10^\circ$. The RMSE is bounded above by process-noise-limited information content; the mild non-monotonicity above $0.02^\circ$ reflects the confounding effect of shorter approach times (larger $\sigma_\theta$ terminates the engagement earlier, sampling fewer late-phase measurements at close range).
 
 \textbf{4. The noise-acceleration effect spans distance scales.} To test whether the counterintuitive finding of §5.1 (angles-only EKF faster than full-information SDRE) generalizes beyond the baseline 866~km scenario, we repeated the A/B comparison at two shorter distance scales: medium-range ($\rho_0 \approx 86.6$~km, $\mathbf{X}_{c0} = [50, 50, 50, 0.01, 0.01, 0.01]$) and short-range ($\rho_0 \approx 8.66$~km, $\mathbf{X}_{c0} = [5, 5, 5, 0.001, 0.001, 0.001]$), with a tightened approach threshold of $\rho < 10$~m. The angles-only EKF achieves the approach threshold faster than the full-information SDRE at all three distance scales: 1.6$\times$ at 866~km (T$_{\text{AO}}$=15.2~h vs T$_{\text{FI}}$=24.5~h, $v_{\text{rel}}^{\text{AO}}$=0.17~m/s vs $v_{\text{rel}}^{\text{FI}}$=0.14~m/s), 2.0$\times$ at 86.6~km (7.0~h vs.\ 13.8~h, $v_{\text{rel}}^{\text{AO}}$=0.77~m/s vs.\ $v_{\text{rel}}^{\text{FI}}$=0.17~m/s), and 2.5$\times$ at 8.66~km (6.7~h vs.\ 16.8~h, $v_{\text{rel}}^{\text{AO}}$=0.66~m/s vs.\ $v_{\text{rel}}^{\text{FI}}$=0.006~m/s). The relative terminal-velocity penalty increases dramatically with decreasing initial separation---from 1.2$\times$ at 866~km to 104$\times$ at 8.66~km. The full-information SDRE achieves near-zero-velocity rendezvous ($v_{\text{rel}} \sim 6$~mm/s at short range) at the cost of longer approach time, following the textbook optimal trajectory. The EKF's estimation error introduces an implicit exploration mechanism that deviates from the optimal path, trading fuel efficiency and terminal softness for closure speed.
 
@@ -513,31 +523,34 @@ Table~\ref{tab:expB} reports the mean $\pm$ standard deviation across 5 independ
 Metric & Median & Mean [95\% CI] & P95 \\
 \midrule
 Success rate & \multicolumn{3}{c}{\textbf{97.5\%} (195/200) [94.3\%, 99.1\%]$^\dagger$} \\
-Approach time (h) & 13.41 & 16.97 [14.12, 19.82] & 35.8 \\
-Final distance (km) & 0.099 & --- & --- \\
-EKF position RMSE (km) & 12.71 & --- & 42.3 \\
-EKF velocity RMSE (mm/s) & 9.34 & --- & 31.2 \\
-$\Delta V$ chaser (km/s) & 8.86 & 829.15$^\ddagger$ & 19.4 \\
-Initial distance (km) & 1038 & 1038 $\pm$ 389 & --- \\
+Approach time (h)                 & 13.41 & 16.97 [15.54, 18.41] & 37.00 \\
+Final distance (km)               & 0.099 & --- & --- \\
+EKF position RMSE (km)            & 12.70 & --- & 40.59 \\
+EKF velocity RMSE (mm/s)          & 9.21  & --- & 42.05 \\
+$\Delta V$ chaser (km/s)$^\ddagger$ & 8.60 & 34.43$^\ddagger$      & 91.78 \\
+$\Delta V$ evader (km/s)          & 4.12  & --- & 45.63 \\
+Initial distance (km)             & 1031  & 1038 $\pm$ 389 & --- \\
 \bottomrule
 \multicolumn{4}{l}{\footnotesize $^\dagger$Clopper--Pearson exact binomial confidence interval.} \\
-\multicolumn{4}{l}{\footnotesize $^\ddagger$Mean inflated by 5 non-converging trials; median (8.86~km/s) is the representative statistic.} \\
+\multicolumn{4}{l}{\footnotesize $^\ddagger$Statistics over the 195 captured trials only. The unconditional mean $\Delta V$ across all 200 trials} \\
+\multicolumn{4}{l}{\footnotesize is 829~km/s, inflated by the 5 non-converging trials where the SDRE controller continues to thrust; the} \\
+\multicolumn{4}{l}{\footnotesize median (8.60~km/s) is the representative statistic for successful approaches.} \\
 \end{tabular}
 \end{table}
 
 The 200-trial Monte Carlo analysis (Table~\ref{tab:expE}) confirms the statistical reliability of the unified framework:
 \begin{itemize}
     \item \textbf{97.5\% success rate} (195/200) under randomized initial conditions with position perturbations of $\pm 300$~km
-    \item Median approach time of 13.41~h with EKF position RMSE of 12.71~km
+    \item Median approach time of 13.41~h with median EKF position RMSE of 12.70~km
     \item Five failure cases correspond to unfavorable initial geometries (large cross-track offsets combined with low initial true anomaly) where the angles-only observability Gramian becomes nearly singular, causing EKF divergence
 \end{itemize}
 
-The large discrepancy between mean and median $\Delta V$ (829.15 vs.\ 8.86~km/s) is driven by the five non-converging trials, where the controller continues to thrust indefinitely without achieving the approach threshold. These cases represent a known failure mode of the SDRE controller under filter divergence and motivate future work on divergence detection and recovery.
+The $\Delta V$ distribution among the 195 captured trials is itself heavy-tailed: the median is 8.60~km/s but the P95 reaches 91.8~km/s, driven by ${\sim}30$ trials with initial separations above 1300~km whose approach trajectories require large late-phase corrections after the EKF has recovered from initial parallax-starved geometry. Users planning missions with the common SDC-matrix framework should therefore budget for the P95 rather than the median $\Delta V$ when the initial separation is uncertain. The additional divergence between statistics for captured trials versus all 200 trials (unconditional mean $\Delta V \approx 829$~km/s) is driven by the five non-converging trials, where the controller continues to thrust indefinitely without achieving the approach threshold. These cases represent a known failure mode of the SDRE controller under filter divergence and motivate future work on divergence detection and recovery (§5.6).
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.95\textwidth]{fig8_monte_carlo.pdf}
-\caption{Monte Carlo statistical analysis ($N = 200$). (a) Capture time distribution (median 13.4~h, 195 captured trials). (b) Final miss distance distribution for captured trials. (c) Total $\Delta V$ distribution (median 8.86~km/s, P95 19.4~km/s).}
+\caption{Monte Carlo statistical analysis ($N = 200$, statistics computed over the 195 captured trials unless otherwise noted). (a) Capture time distribution (median 13.4~h). (b) Final miss distance distribution for captured trials. (c) Total chaser $\Delta V$ distribution (median 8.60~km/s, P95 91.8~km/s---heavy-tailed by mission-length trials with initial separations ${>}1300$~km).}
 \label{fig:mc_hist}
 \end{figure}
 
@@ -622,7 +635,7 @@ The experimental results, taken together, make a cumulative argument that the SD
 
 \subsubsection{Engineering Implications}
 
-The inverse relationship between sensor noise and approach time (Table~\ref{tab:expB}) is an empirically observed phenomenon with potential operational relevance. Across the tested range ($\sigma_\theta \in [0.001^\circ, 0.1^\circ]$), a 100$\times$ relaxation in sensor precision reduces approach time by a factor of 2.3 while maintaining 100\% success rate and constant peak thrust. The mechanism---noise-amplified Kalman gains inducing more aggressive SDRE control responses---is well-characterized within the linear Gaussian framework but its closed-loop consequences in the nonlinear SDRE setting were not anticipated.
+The inverse relationship between sensor noise and approach time (Table~\ref{tab:expB}) is an empirically observed phenomenon with potential operational relevance. Across the tested range ($\sigma_\theta \in [0.001^\circ, 0.1^\circ]$), a 100$\times$ relaxation in sensor precision reduces approach time by a factor of 2.3 while maintaining 100\% success rate and constant peak thrust. As dissected in §5.2, the driver is not "more aggressive control" in a certainty-equivalent sense---total $\Delta V$ is essentially invariant across the sweep---but a composition of nonlinear filter--controller coupling (through $A_{\text{SDC}}(\hat{\mathbf{x}})$), $\sigma_\theta$-scaled initial-transient effects (through $P_0 \propto \sigma_\theta^2$), and stochastic first-passage of the capture threshold at inflated terminal velocities. The phenomenon is therefore inseparable from the common SDC-matrix architecture itself: use a different filter-controller pair in which the filter estimate does \emph{not} enter the controller linearization point, and the effect would attenuate.
 
 This observation suggests a possible \textbf{dual-mode operational strategy}: a relaxed-precision, wide-field-of-view mode during the long-range approach phase to accelerate closure, switching to a high-precision mode during terminal rendezvous. The $\Delta V$ penalty is modest (${\sim}2\%$ increase from $\sigma_\theta = 0.008^\circ$ to $0.1^\circ$). However, we emphasize that this strategy is proposed as an empirical observation warranting further investigation---the five failure cases in the Monte Carlo analysis (§5.3) indicate that sensor noise interacts nontrivially with initial geometry and observability. A systematic study across a broader range of orbital parameters and initial conditions is needed before operational recommendations can be made.
 
@@ -658,10 +671,16 @@ This paper presented a comprehensive experimental validation of a common SDC-mat
 
     \item \textbf{Closed-loop performance is statistically reliable in MEO.} Monte Carlo analysis ($N = 200$) yields a 97.5\% success rate (195/200, 95\% CI: [94.3\%, 99.1\%]) with median approach time of 13.4~h and median EKF position RMSE of 12.7~km under randomized initial conditions. However, the framework with fixed $(Q_{\text{ctrl}}, R_{\text{ctrl}})$ parameters does not generalize across orbital regimes: LEO fails due to control authority saturation at close range (Coriolis forces exceeding available thrust), and GEO exhibits stochastic EKF divergence from angular-innovation wrapping under a frozen Kalman gain. The MEO regime ($a_c = 15{,}000$~km, $e_c = 0.5$) represents the natural operating envelope where orbital timescales balance observability requirements against control authority constraints.
 
-    \item \textbf{Sensor noise exhibits a counterintuitive acceleration effect across three orders of magnitude in distance.} Increasing $\sigma_\theta$ from $0.001^\circ$ to $0.1^\circ$ (100$\times$) reduces approach time by a factor of 2.3 (Spearman's $\rho = -0.89$, $p < 0.01$), while peak thrust remains constant at 1.96~m/s$^2$. The mechanism is characterized as innovation amplification dominating Kalman gain attenuation: larger measurement innovations drive larger state corrections despite reduced steady-state Kalman gains. This effect is a consequence of the linear-state-feedback structure $\mathbf{u} = -R_{\text{ctrl}}^{-1}B^T P \hat{\mathbf{x}}$ operating on noise-perturbed estimates and is not specific to SDRE. It suggests a potential dual-mode sensing strategy for time-critical approach missions, though further study is needed before operational recommendations can be made.
+    \item \textbf{Sensor noise exhibits a counterintuitive acceleration effect that reflects nonlinear filter--controller coupling.} Increasing $\sigma_\theta$ from $0.001^\circ$ to $0.1^\circ$ (100$\times$) reduces approach time by a factor of 2.3 (Spearman's $\rho = -0.89$, $p < 0.01$) while peak thrust and total $\Delta V$ remain essentially constant (${<}1\%$ variation). A naive linear-Gaussian analysis predicts no acceleration and, in fact, the wrong sign for $\|K\|_F$: direct evaluation shows $\|K\|_F$ \emph{increases} $1.7\times$ across the sweep, not decreases as classical Riccati scaling would suggest, because the SDC matrix is evaluated at the noisy estimate $\hat{\mathbf{x}}$ and perturbs $P$ through the ARE. The actual driver of the acceleration is a composition of (a) $A_{\text{SDC}}(\hat{\mathbf{x}})$ coupling that breaks LQG separation, (b) $\sigma_\theta$-scaled initial covariance $P_0$ producing a strong first-innovation transient, and (c) first-passage bias at inflated terminal residual velocities. The phenomenon is therefore not a generic property of state feedback under measurement noise but a specific signature of the common SDC-matrix architecture; a dual-mode sensing strategy is suggested but further study is required before operational recommendations can be made.
 \end{enumerate}
 
 Future work includes: (i) extension to LEO and GEO regimes through scheduled $(Q_{\text{ctrl}}, R_{\text{ctrl}})$ parameter tuning; (ii) investigation of SDC parameterization sensitivity---quantifying how alternative factorizations affect closed-loop performance; (iii) adaptive Kalman gain management to prevent covariance freezing in slow-dynamics regimes; (iv) divergence detection and recovery strategies for the ${\sim}2.5\%$ failure cases identified in Monte Carlo analysis; and (v) hardware-in-the-loop experimental verification on space-qualified processors.
+
+%=====================================================================
+\section*{Data and Code Availability}
+%=====================================================================
+
+The closed-loop simulation framework---nonlinear elliptical relative motion (NERM) dynamics, SDC parameterization, angles-only EKF, and symplectic-balanced SDRE controller---is implemented in Python 3.12 in a project repository containing modules for dynamics (\texttt{aerospace/dynamics/nerm.py}), estimation (\texttt{aerospace/estimation/ekf.py}), control (\texttt{aerospace/control/sdre.py}), and the composed closed-loop engine (\texttt{aerospace/simulation/nerm\_ekf\_sdre.py}). Numerical results in Tables~\ref{tab:pred_err}, \ref{tab:expA}, \ref{tab:expB}, \ref{tab:expC}, \ref{tab:expD}, and \ref{tab:expE} were produced by parameter-sweep and Monte Carlo experiment scripts that call these modules; the resulting CSV output (\texttt{data/noise\_sweep\_results.csv}, \texttt{data/ecc\_sweep\_results.csv}, \texttt{data/altitude\_sweep\_results.csv}, \texttt{data/monte\_carlo\_results.csv}, \texttt{data/terminal\_vrel\_results.csv}) and the figures in this manuscript are archived alongside the code. Aggregate statistics reported in this paper (means, medians, percentiles, and standard deviations) were re-derived directly from the archived CSVs; readers seeking to reproduce or extend the analysis can regenerate any table row from the raw seed-level records. Full release of the sweep and Monte Carlo driver scripts is planned upon acceptance.
 
 %=====================================================================
 \section*{Acknowledgments}
@@ -680,7 +699,7 @@ W.H. Clohessy, R.S. Wiltshire,
 
 \bibitem{Tschauner1965}
 J. Tschauner, P. Hempel,
-\newblock Rendezvous with a target in an elliptical orbit,
+\newblock Rendezvous zu einem in elliptischer Bahn umlaufenden Ziel [Rendezvous with a target on an elliptical orbit],
 \newblock \emph{Astronautica Acta}, Vol.~11, No.~2, 1965, pp.~104--109.
 
 \bibitem{Yamanaka2002}
@@ -729,9 +748,9 @@ T. \c{C}imen,
 \newblock \emph{Journal of Guidance, Control, and Dynamics}, Vol.~35, No.~4, 2012, pp.~1025--1047.
 
 \bibitem{Tartaglia2016}
-A. Tartaglia, M. Innocenti,
+M. Innocenti, A. Tartaglia,
 \newblock Game-theoretic strategies for spacecraft rendezvous and motion synchronization,
-\newblock \emph{AIAA Guidance, Navigation, and Control Conference}, 2016.
+\newblock \emph{AIAA Guidance, Navigation, and Control Conference}, 2016. DOI: 10.2514/6.2016-0873.
 
 \bibitem{Mracek1996}
 C.P. Mracek, J.R. Cloutier, C.A. D'Souza,
@@ -746,7 +765,7 @@ H.-E. Park, Y.-R. Kim,
 \bibitem{Simhamed2021}
 Y. Simhamed, F. Ykhlef, A. Iratni,
 \newblock A novel frequency tracker for sinusoidal signal based on state dependent Riccati equation filter,
-\newblock \emph{Measurement}, Vol.~183, 2021, 109835.
+\newblock \emph{Measurement}, Vol.~183, 2021, 109845.
 
 \bibitem{Vepa2018}
 R. Vepa,
@@ -755,8 +774,8 @@ R. Vepa,
 
 \bibitem{Okasha2011}
 M. Okasha, B. Newman,
-\newblock Relative motion guidance, navigation and control for autonomous spacecraft rendezvous,
-\newblock \emph{Proceedings of the AAS/AIAA Space Flight Mechanics Meeting}, 2011.
+\newblock Relative motion guidance, navigation and control for autonomous orbital rendezvous,
+\newblock \emph{AIAA Guidance, Navigation, and Control Conference}, 2011. DOI: 10.2514/6.2011-6427.
 
 \bibitem{Woffinden2009b}
 D.C. Woffinden, D.K. Geller,
@@ -785,13 +804,13 @@ J. Wang, E.A. Butcher, T.A. Lovell,
 
 \bibitem{Karlgaard2003}
 C.D. Karlgaard, F.H. Lutze,
-\newblock Second-order relative motion equations,
+\newblock Second-order equations for rendezvous in a circular orbit,
 \newblock \emph{Journal of Guidance, Control, and Dynamics}, Vol.~26, No.~1, 2003, pp.~41--49.
 
-\bibitem{Sullivan2019}
+\bibitem{Sullivan2021}
 J. Sullivan, S. D'Amico,
-\newblock Adapted Gaussian mixture model filter for angles-only relative navigation,
-\newblock \emph{Journal of Guidance, Control, and Dynamics}, Vol.~42, No.~9, 2019, pp.~1895--1914.
+\newblock Generalized angles-only navigation architecture for autonomous distributed space systems,
+\newblock \emph{Journal of Guidance, Control, and Dynamics}, Vol.~44, No.~6, 2021, pp.~1087--1105.
 
 \bibitem{Alfriend2009}
 K.T. Alfriend, S.R. Vadali, P. Gurfil, J.P. How, L.S. Breger,
@@ -800,7 +819,7 @@ K.T. Alfriend, S.R. Vadali, P. Gurfil, J.P. How, L.S. Breger,
 
 \bibitem{Grzymisch2014}
 J. Grzymisch, W. Fichter,
-\newblock Observability criteria and unobservable maneuvers for angles-only navigation,
+\newblock Observability criteria and unobservable maneuvers for in-orbit bearings-only navigation,
 \newblock \emph{Journal of Guidance, Control, and Dynamics}, Vol.~37, No.~4, 2014, pp.~1250--1260.
 
 \end{thebibliography}
