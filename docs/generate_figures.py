@@ -688,7 +688,7 @@ def fig5_ekf_error_history(result_ao):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def fig6_noise_sensitivity():
-    """2×2: capture time, terminal v_rel, EKF RMSE, thrust — with terminal velocity trade-off."""
+    """2×2: first-passage time, terminal v_rel, EKF RMSE, and thrust."""
     csv_path = ROOT / "data" / "noise_sweep_results.csv"
     rows = []
     with open(csv_path) as fh:
@@ -746,7 +746,7 @@ def fig6_noise_sensitivity():
 
     fig, axes = plt.subplots(2, 2, figsize=(11, 8))
 
-    # ── (a) Capture time + terminal v_rel (dual y-axis) ──
+    # ── (a) First-passage time + terminal v_rel (dual y-axis) ──
     ax = axes[0, 0]
     ct = np.array([summaries[s]["cap_time_med"] / 3600 for s in sigmas])
     ct_std = np.array([summaries[s]["cap_time_std"] / 3600 for s in sigmas])
@@ -754,13 +754,13 @@ def fig6_noise_sensitivity():
     vr_std = np.array([summaries[s]["vrel_std"] for s in sigmas])
 
     ax.errorbar(sigmas, ct, yerr=ct_std, fmt="o-", color="#3498DB",
-                capsize=4, markersize=7, lw=1.5, label="Capture time (h)")
+                capsize=4, markersize=7, lw=1.5, label="First-passage time (h)")
     ax.axhline(88.13, color="#3498DB", ls="--", lw=0.8, alpha=0.5)
     ax.set_xscale("log")
     ax.set_xlabel(r"$\sigma_\theta$ (deg)")
-    ax.set_ylabel("Capture time (h)", color="#3498DB")
+    ax.set_ylabel("First-passage time (h)", color="#3498DB")
     ax.tick_params(axis="y", labelcolor="#3498DB")
-    ax.set_title("(a) Capture time vs. sensor noise", fontsize=10)
+    ax.set_title("(a) First-passage time vs. sensor noise", fontsize=10)
     ax.grid(True, alpha=0.25)
 
     ax2 = ax.twinx()
@@ -776,7 +776,7 @@ def fig6_noise_sensitivity():
     ax.legend(lines1 + lines2, labels1 + labels2, fontsize=7, loc="upper right")
 
     # Annotate the trade-off
-    ax.annotate(f"Capture time: {ct[0]/ct[-1]:.1f}$\\times$ faster\n"
+    ax.annotate(f"First passage: {ct[0]/ct[-1]:.1f}$\\times$ earlier\n"
                 f"Terminal $v_{{\\rm rel}}$: {vr[-1]/vr[0]:.1f}$\\times$ higher",
                 xy=(0.03, 40), fontsize=8, color="#D43F3F",
                 bbox=dict(boxstyle="round", fc="lightyellow", alpha=0.8))
@@ -794,8 +794,10 @@ def fig6_noise_sensitivity():
                         widths=0.5, medianprops={"color": "#D43F3F", "lw": 1.5})
         for patch in bp["boxes"]:
             patch.set_facecolor("#FADBD8")
+    ax.axhline(y=0.1, color="#8E44AD", ls="--", lw=1.0,
+               label="Soft-arrival proxy (0.1 m/s)")
     ax.axhline(y=2.0, color="#E67E22", ls="--", lw=1.0,
-               label="Soft-rendezvous threshold (2 m/s)")
+               label="Proximity safety reference (2 m/s)")
     ax.axhline(y=vrel_fi, color="#27AE60", ls=":", lw=1.0,
                label=f"Full-info ($\\approx${vrel_fi:.1f} m/s)")
     ax.set_xlabel(r"$\sigma_\theta$ (deg)")
@@ -836,13 +838,12 @@ def fig6_noise_sensitivity():
     ax.grid(True, alpha=0.25)
     ax.annotate(f"Peak thrust constant:\n"
                 f"{tmax[0]:.3f} $\\pm$ {np.std(tmax):.4f} m/s²",
-                xy=(0.002, tmax[0] * 1.02), fontsize=8, color="#2C3E50",
-                bbox=dict(boxstyle="round", fc="lightyellow", alpha=0.7))
+                xy=(0.0015, tmax[0] * 0.84), fontsize=8, color="#2C3E50",
+                va="top", bbox=dict(boxstyle="round", fc="lightyellow", alpha=0.7))
 
-    fig.suptitle("Fig. 6. Sensor noise sensitivity — trade-off revealed: "
-                 "higher noise reduces capture time by 2.3$\\times$ but "
-                 "increases terminal relative velocity by $\\sim$20$\\times$ "
-                 "(all trials remain under 2 m/s soft-rendezvous threshold).",
+    fig.suptitle("Fig. 6. Sensor noise sensitivity — speed--softness trade-off: "
+                 "higher noise shortens first-passage time by 2.3$\\times$ but "
+                 "increases terminal relative velocity by $\\sim$20$\\times$.",
                  fontsize=10, y=1.02)
     fig.tight_layout()
     fig.savefig(OUT / "fig6_noise_sensitivity.pdf")
