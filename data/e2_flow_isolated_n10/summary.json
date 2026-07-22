@@ -1,0 +1,18 @@
+{
+  "experiment": "E2 n=10 isolated confirmation",
+  "navigator": "jacobian",
+  "prediction_map": "flow",
+  "Q": "zero",
+  "n_seeds": 10,
+  "sigma_theta_deg": [
+    0.001,
+    0.008,
+    0.1
+  ],
+  "geometries": [
+    "radial",
+    "alongtrack",
+    "crosstrack"
+  ],
+  "gono_go": false
+}

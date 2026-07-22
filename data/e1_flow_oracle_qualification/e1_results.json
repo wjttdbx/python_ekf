@@ -1,0 +1,32 @@
+{
+  "radial": {
+    "T_FP": 20490.0,
+    "v_FP": 5.337228232939188e-05,
+    "T_soft": 20490.0,
+    "T_sustain": 20490.0,
+    "sustained": true,
+    "total_delta_v": 0.1096143636264441,
+    "peak_accel": 0.00012063783644597995,
+    "min_dist": 4.50356048732165e-07
+  },
+  "alongtrack": {
+    "T_FP": 17570.0,
+    "v_FP": 7.33432854493199e-05,
+    "T_soft": 17570.0,
+    "T_sustain": 17570.0,
+    "sustained": true,
+    "total_delta_v": 0.029548490878463902,
+    "peak_accel": 1.2361731202416782e-05,
+    "min_dist": 1.9968222870161298e-06
+  },
+  "crosstrack": {
+    "T_FP": 17510.0,
+    "v_FP": 0.00021593696391915103,
+    "T_soft": 18600.0,
+    "T_sustain": 20480.0,
+    "sustained": true,
+    "total_delta_v": 0.05908952175119735,
+    "peak_accel": 1.8450858671672165e-05,
+    "min_dist": 4.003413692805183e-06
+  }
+}
