@@ -1,0 +1,226 @@
+{
+  "experiment": "E2b paired analysis",
+  "total_pairs": 90,
+  "condition_summaries": [
+    {
+      "geometry": "radial",
+      "sigma_theta_deg": 0.001,
+      "jacobian_nees_mean": 6.476821970823724,
+      "ukf_nees_mean": 6.459150222017011,
+      "jacobian_nis_mean": 2.0143886349010485,
+      "ukf_nis_mean": 2.01431387347541,
+      "jacobian_nis_inlier_frac": null,
+      "ukf_nis_inlier_frac": 0.9968636032093364
+    },
+    {
+      "geometry": "radial",
+      "sigma_theta_deg": 0.008,
+      "jacobian_nees_mean": 6.468004648619688,
+      "ukf_nees_mean": 6.466594947870929,
+      "jacobian_nis_mean": 2.013821676837177,
+      "ukf_nis_mean": 2.0138130344646763,
+      "jacobian_nis_inlier_frac": null,
+      "ukf_nis_inlier_frac": 0.9968818380743982
+    },
+    {
+      "geometry": "radial",
+      "sigma_theta_deg": 0.1,
+      "jacobian_nees_mean": 6.4162910573989524,
+      "ukf_nees_mean": 6.415979238517616,
+      "jacobian_nis_mean": 2.0136914944441098,
+      "ukf_nis_mean": 2.0136776910524996,
+      "jacobian_nis_inlier_frac": null,
+      "ukf_nis_inlier_frac": 0.9968818380743982
+    },
+    {
+      "geometry": "alongtrack",
+      "sigma_theta_deg": 0.001,
+      "jacobian_nees_mean": 6.919714824527874,
+      "ukf_nees_mean": 6.925605234634308,
+      "jacobian_nis_mean": 2.014165199863354,
+      "ukf_nis_mean": 2.0141244500752373,
+      "jacobian_nis_inlier_frac": null,
+      "ukf_nis_inlier_frac": 0.9969000729394605
+    },
+    {
+      "geometry": "alongtrack",
+      "sigma_theta_deg": 0.008,
+      "jacobian_nees_mean": 6.909227875821135,
+      "ukf_nees_mean": 6.907527911062412,
+      "jacobian_nis_mean": 2.0138726388810357,
+      "ukf_nis_mean": 2.013856022494731,
+      "jacobian_nis_inlier_frac": null,
+      "ukf_nis_inlier_frac": 0.9969000729394605
+    },
+    {
+      "geometry": "alongtrack",
+      "sigma_theta_deg": 0.1,
+      "jacobian_nees_mean": 6.887332446003514,
+      "ukf_nees_mean": 6.8842737488964785,
+      "jacobian_nis_mean": 2.0138424359932494,
+      "ukf_nis_mean": 2.013831236611305,
+      "jacobian_nis_inlier_frac": null,
+      "ukf_nis_inlier_frac": 0.9968271334792125
+    },
+    {
+      "geometry": "crosstrack",
+      "sigma_theta_deg": 0.001,
+      "jacobian_nees_mean": 125013.61277493979,
+      "ukf_nees_mean": 6.821623159129883,
+      "jacobian_nis_mean": 86.6732620181677,
+      "ukf_nis_mean": 2.014596096316807,
+      "jacobian_nis_inlier_frac": null,
+      "ukf_nis_inlier_frac": 0.9969000729394605
+    },
+    {
+      "geometry": "crosstrack",
+      "sigma_theta_deg": 0.008,
+      "jacobian_nees_mean": 390.7120487151336,
+      "ukf_nees_mean": 6.667630610624267,
+      "jacobian_nis_mean": 2.2951073568650844,
+      "ukf_nis_mean": 2.0138973694334448,
+      "jacobian_nis_inlier_frac": null,
+      "ukf_nis_inlier_frac": 0.9968818380743982
+    },
+    {
+      "geometry": "crosstrack",
+      "sigma_theta_deg": 0.1,
+      "jacobian_nees_mean": 9.536826308040087,
+      "ukf_nees_mean": 7.054692504553602,
+      "jacobian_nis_mean": 2.015803032163179,
+      "ukf_nis_mean": 2.0140364943219633,
+      "jacobian_nis_inlier_frac": null,
+      "ukf_nis_inlier_frac": 0.9968636032093364
+    }
+  ],
+  "paired_differences": [
+    {
+      "metric": "nees_mean",
+      "mean": -13932.592885023209,
+      "ci_lower": -39778.092127339776,
+      "ci_upper": -213.55628539882233,
+      "n": 90
+    },
+    {
+      "metric": "nis_mean",
+      "mean": -9.43797869109665,
+      "ci_lower": -26.819427921568607,
+      "ci_upper": -0.17128177587951576,
+      "n": 90
+    },
+    {
+      "metric": "rmse_dist",
+      "mean": -24.851382560263346,
+      "ci_lower": -54.489162950671236,
+      "ci_upper": -6.459272554059835,
+      "n": 90
+    },
+    {
+      "metric": "T_FP",
+      "mean": -1.8888888888888888,
+      "ci_lower": -5.444444444444445,
+      "ci_upper": 0.2222222222222222,
+      "n": 90
+    },
+    {
+      "metric": "total_delta_v",
+      "mean": -5.1523220316708936e-05,
+      "ci_lower": -0.00017585373716371244,
+      "ci_upper": 2.2066396325096607e-05,
+      "n": 90
+    },
+    {
+      "metric": "peak_accel",
+      "mean": -8.299156634640424e-08,
+      "ci_lower": -2.465776009838018e-07,
+      "ci_upper": 8.26937255629423e-09,
+      "n": 90
+    }
+  ],
+  "anomalous_seeds": [
+    {
+      "geometry": "crosstrack",
+      "seed": 1,
+      "sigma_theta_deg": 0.001,
+      "jacobian_nees": 1099964.9121979729,
+      "ukf_nees": 10.304411802046154
+    },
+    {
+      "geometry": "crosstrack",
+      "seed": 1,
+      "sigma_theta_deg": 0.008,
+      "jacobian_nees": 1545.0142976502354,
+      "ukf_nees": 9.257519580080302
+    },
+    {
+      "geometry": "crosstrack",
+      "seed": 2,
+      "sigma_theta_deg": 0.001,
+      "jacobian_nees": 99753.97261926382,
+      "ukf_nees": 6.643845090497232
+    },
+    {
+      "geometry": "crosstrack",
+      "seed": 2,
+      "sigma_theta_deg": 0.008,
+      "jacobian_nees": 1503.985708734345,
+      "ukf_nees": 6.623415352428815
+    },
+    {
+      "geometry": "crosstrack",
+      "seed": 3,
+      "sigma_theta_deg": 0.001,
+      "jacobian_nees": 3234.381181483091,
+      "ukf_nees": 6.513918067363908
+    },
+    {
+      "geometry": "crosstrack",
+      "seed": 4,
+      "sigma_theta_deg": 0.001,
+      "jacobian_nees": 294.9271542765124,
+      "ukf_nees": 5.34172508267151
+    },
+    {
+      "geometry": "crosstrack",
+      "seed": 5,
+      "sigma_theta_deg": 0.001,
+      "jacobian_nees": 7268.639071184259,
+      "ukf_nees": 7.045025843197554
+    },
+    {
+      "geometry": "crosstrack",
+      "seed": 5,
+      "sigma_theta_deg": 0.008,
+      "jacobian_nees": 116.81741606474733,
+      "ukf_nees": 6.950585495714674
+    },
+    {
+      "geometry": "crosstrack",
+      "seed": 6,
+      "sigma_theta_deg": 0.001,
+      "jacobian_nees": 36059.31229287734,
+      "ukf_nees": 7.164873669254643
+    },
+    {
+      "geometry": "crosstrack",
+      "seed": 6,
+      "sigma_theta_deg": 0.008,
+      "jacobian_nees": 601.061865285859,
+      "ukf_nees": 7.154877137580645
+    },
+    {
+      "geometry": "crosstrack",
+      "seed": 7,
+      "sigma_theta_deg": 0.001,
+      "jacobian_nees": 269.0695397609254,
+      "ukf_nees": 6.657755377717508
+    },
+    {
+      "geometry": "crosstrack",
+      "seed": 8,
+      "sigma_theta_deg": 0.001,
+      "jacobian_nees": 3229.815641692824,
+      "ukf_nees": 8.211345303728342
+    }
+  ]
+}

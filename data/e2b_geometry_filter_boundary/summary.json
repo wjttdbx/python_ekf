@@ -1,0 +1,18 @@
+{
+  "experiment": "E2b Flow-UKF boundary",
+  "navigator": "ukf",
+  "prediction_map": "flow",
+  "Q": "zero",
+  "n_seeds": 10,
+  "sigma_theta_deg": [
+    0.001,
+    0.008,
+    0.1
+  ],
+  "geometries": [
+    "radial",
+    "alongtrack",
+    "crosstrack"
+  ],
+  "total_runs": 90
+}
