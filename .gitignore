@@ -23,3 +23,20 @@ w_and_q/
 
 # macOS
 .DS_Store
+
+# Local scratch, logs, backups and bulk experiment data (kept out of Git)
+tmp/
+.tmp_*/
+*.bak
+*.log
+*.pid
+.project-status.json
+figures/archive/figures.zip
+data/e2_experiment/
+data/e2_flow_*/
+data/e2a_crosstrack_consistency/
+data/e2b_geometry_filter_boundary/
+data/e2c_*/
+data/e2d_*/
+outputs/EKF-SDRE-*/
+outputs/dre_test/
