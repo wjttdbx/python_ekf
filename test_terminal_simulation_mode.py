@@ -16,6 +16,50 @@ class _ControllerWithEvaderCommand:
         return np.zeros(3), np.array([1.0, -2.0, 3.0])
 
 
+class _FixedNavigator:
+    """Keeps a prescribed estimate so the stopping source is observable."""
+
+    def __init__(self, x):
+        self.x = np.asarray(x, dtype=float)
+        self.P = np.eye(6)
+        self.R = np.eye(2)
+        self.angles_only = True
+
+    def predict(self, *args, **kwargs):
+        return self.x.copy(), self.P.copy()
+
+    def update(self, x_priori, P_priori, z_meas):
+        return np.zeros(2)
+
+
+def test_estimated_capture_source_stops_on_estimate_not_true_distance():
+    dynamics = OrbitalDynamics()
+    x_p0 = np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    navigator = _FixedNavigator(
+        np.array([0.5, 0.0, 0.0, 0.0, 0.0, 0.0])
+    )
+    simulation = EKFSDRESimulation(
+        dynamics=dynamics,
+        controller=_ControllerWithEvaderCommand(),
+        navigator=navigator,
+        X_p0=x_p0,
+        X_e0=np.zeros(6),
+        dt=1.0,
+        capture_dist=0.75,
+        rng=np.random.default_rng(0),
+        passive_evader=True,
+        early_stop=True,
+        capture_source="estimated",
+    )
+
+    result = simulation.run(t_end=2.0)
+
+    assert result.captured is True
+    assert result.t.tolist() == [0.0, 1.0]
+    assert np.linalg.norm(result.x_est_history[:3, -1]) < 0.75
+    assert result.dist_history[-1] > 0.75
+
+
 def test_passive_terminal_study_runs_full_horizon_after_initial_entry():
     dynamics = OrbitalDynamics()
     x_p0 = np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0])

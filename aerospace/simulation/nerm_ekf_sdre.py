@@ -55,6 +55,7 @@ class EKFSDRESimResult:
 _VALID_OVERRIDE_KEYS = {"pos", "vel", "A"}
 _VALID_OVERRIDE_VALS = {"estimated", "true"}
 _VALID_PREDICTION_MAPS = {"euler", "flow"}
+_VALID_CAPTURE_SOURCES = {"true", "estimated"}
 
 
 class EKFSDRESimulation:
@@ -90,6 +91,7 @@ class EKFSDRESimulation:
                  passive_evader: bool = True,
                  early_stop: bool = False,
                  prediction_map: str = "euler",
+                 capture_source: str = "true",
                  ctrl_state_override: dict | None = None):
 
         # ── 导航器：navigator 优先，ekf 作为后备 ──────────────────────
@@ -108,6 +110,11 @@ class EKFSDRESimulation:
         self.rng = rng
         self.passive_evader = passive_evader
         self.early_stop = early_stop
+        if capture_source not in _VALID_CAPTURE_SOURCES:
+            raise ValueError(
+                f"capture_source 必须为 {_VALID_CAPTURE_SOURCES}，收到: {capture_source}"
+            )
+        self.capture_source = capture_source
         if prediction_map not in _VALID_PREDICTION_MAPS:
             raise ValueError(
                 f"prediction_map 必须为 {_VALID_PREDICTION_MAPS}，收到: {prediction_map}"
@@ -370,8 +377,18 @@ class EKFSDRESimulation:
             _record(k + 1, state, self.navigator.x, u_p, u_e, innov, nis, nees)
 
             # 5. 早停判断（仅 early_stop=True 时启用）
-            if self.early_stop and dist_hist[k + 1] < self.capture_dist:
-                print(f"捕获！t = {t:.1f} s，相对距离 = {dist_hist[k+1]*1000:.1f} m")
+            estimated_dist = float(np.linalg.norm(self.navigator.x[:3]))
+            decision_dist = (
+                dist_hist[k + 1]
+                if self.capture_source == "true"
+                else estimated_dist
+            )
+            if self.early_stop and decision_dist < self.capture_dist:
+                print(
+                    f"捕获！t = {t:.1f} s，判据距离 = {decision_dist*1000:.1f} m，"
+                    f"真实距离 = {dist_hist[k+1]*1000:.1f} m，"
+                    f"估计距离 = {estimated_dist*1000:.1f} m"
+                )
                 N_actual = k + 1
                 captured = True
                 break
