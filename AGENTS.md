@@ -2,18 +2,33 @@
 
 Agent instructions for this repository.
 
-## Scope
+## Task scope and completion
 
-- Keep changes focused on the user request.
-- Do not start unrelated refactors.
-- Prefer minimal diffs and preserve existing style.
+Complete requested edits, affected checks, and fixes within the authorized scope.
+Resolve routine implementation details without repeated approval; ask only when
+missing information changes the result or authority to act. Review-only and
+draft-only requests remain read-only for the source artifacts.
+
+Read the files and references needed for the current change, not the whole
+project. Run affected tests for behavior changes; documentation-only edits need
+a content/diff check, not training or simulation. Broaden testing only for shared
+behavior changes, failures, or a concrete unresolved concern. Passing the
+necessary checks is the stopping point.
+
+Keep frozen experiment seeds, thresholds, metrics, and stop conditions intact.
+Formal research acceptance follows its agreed protocol; a smoke run or an
+implemented function does not establish a paper claim. Preserve negative results
+and ongoing runs. Hashes belong at major freezes or provenance milestones, not
+every edit or run.
+
+Keep changes focused, avoid unrelated refactors, and preserve existing style.
 
 ## Project At A Glance
 
 - Domain: spacecraft pursuit-evasion dynamics in LVLH coordinates.
 - Core dynamics modules are in [aerospace/dynamics/](aerospace/dynamics/).
 - Controllers are in [aerospace/control/](aerospace/control/).
-- Authoritative architecture notes are in [CLAUDE.md](CLAUDE.md).
+- Use [CLAUDE.md](CLAUDE.md) for architecture or experiment details needed by the task; it is not required reading for every edit.
 
 ## Run Commands
 
@@ -51,9 +66,9 @@ Agent instructions for this repository.
   - [aerospace/experiments/altitude_sweep.py](aerospace/experiments/altitude_sweep.py)
   - [aerospace/experiments/eccentricity_sweep.py](aerospace/experiments/eccentricity_sweep.py)
 
-## Known Pitfalls (Check Before Debugging)
+## Known Pitfalls (Consult When Relevant)
 
-- [README.md](README.md) is currently empty; prefer [CLAUDE.md](CLAUDE.md) for technical context.
+- If [README.md](README.md) lacks the needed technical context, consult the relevant section of [CLAUDE.md](CLAUDE.md).
 - [main.py](main.py) is the active entry script and imports the simulation engine from [aerospace/simulation/nerm_ekf_sdre.py](aerospace/simulation/nerm_ekf_sdre.py).
 - `aerospace/control/neural.py` and `neural_2d.py` import from `aerospace.pinn.*` which no longer exists — they are effectively dead code.
 - Use `uv run python` not bare `python` — the system Python may be 3.8.
