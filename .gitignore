@@ -40,3 +40,5 @@ data/e2c_*/
 data/e2d_*/
 outputs/EKF-SDRE-*/
 outputs/dre_test/
+outputs/j2_capture_validation/
+outputs/j2_capture_validation_10m/
