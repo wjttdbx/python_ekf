@@ -1,5 +1,14 @@
 # AGENTS.md
 
+## Archived development repository
+
+Since 2026-09-12, active development has moved to `../pinn-ekf`.
+The original study is under `../pinn-ekf/studies/python_ekf/` and shares the
+main repository's `aerospace` package. This directory is a historical backup.
+For new implementation, experiment, or manuscript tasks, use the main
+repository unless the user explicitly requests work on this historical copy.
+Preserve the original uncommitted J2 study and its results.
+
 Agent instructions for this repository.
 
 ## Task scope and completion
